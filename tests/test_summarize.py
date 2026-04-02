@@ -148,7 +148,20 @@ def test_summarize_success(tmp_path, monkeypatch):
     assert (tmp_path / "My_Video_Title_summary.md").read_text() == "# Summary\n\nGreat video."
 
 
+def test_main_missing_api_key(capsys, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    with patch("sys.argv", ["summarize.py", "some.txt"]):
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "ANTHROPIC_API_KEY" in out
+    assert "export" in out
+    assert "console.anthropic.com" in out
+
+
 def test_main_success(capsys, tmp_path, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.chdir(tmp_path)
     transcript_file = tmp_path / "abc123.txt"
     transcript_file.write_text(
@@ -175,6 +188,7 @@ def test_main_success(capsys, tmp_path, monkeypatch):
 
 
 def test_main_rate_limit_error(capsys, tmp_path, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.chdir(tmp_path)
     transcript_file = tmp_path / "abc123.txt"
     transcript_file.write_text(
@@ -196,6 +210,7 @@ def test_main_rate_limit_error(capsys, tmp_path, monkeypatch):
 
 
 def test_main_auth_error(capsys, tmp_path, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.chdir(tmp_path)
     transcript_file = tmp_path / "abc123.txt"
     transcript_file.write_text(

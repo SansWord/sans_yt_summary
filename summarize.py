@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 import argparse
@@ -71,6 +72,19 @@ def summarize(transcript_path: str, model: str = DEFAULT_MODEL, prompt_path: str
 
 
 def main() -> None:
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("Error: ANTHROPIC_API_KEY is not set.")
+        print()
+        print("To set it for the current session:")
+        print('  export ANTHROPIC_API_KEY="sk-ant-..."')
+        print()
+        print("To persist it across sessions, add to ~/.zshrc or ~/.bashrc:")
+        print('  echo \'export ANTHROPIC_API_KEY="sk-ant-..."\' >> ~/.zshrc')
+        print("  source ~/.zshrc")
+        print()
+        print("Get your API key at: https://console.anthropic.com/")
+        sys.exit(1)
+
     parser = argparse.ArgumentParser(
         description="Summarize a YouTube transcript using Claude."
     )
