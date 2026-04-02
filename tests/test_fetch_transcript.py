@@ -74,3 +74,30 @@ def test_format_segments_truncates_not_rounds():
     segments = [{"text": "x", "start": 125.4, "duration": 1.0}]
     result = format_segments(segments)
     assert result == "[2:05] x\n"
+
+
+from unittest.mock import patch, MagicMock
+from youtube_transcript_api import TranscriptsDisabled, NoTranscriptFound
+from fetch_transcript import fetch_transcript
+
+
+def test_fetch_transcript_success():
+    fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+    with patch("fetch_transcript.YouTubeTranscriptApi.get_transcript", return_value=fake_segments):
+        result = fetch_transcript("dQw4w9WgXcQ")
+    assert result == fake_segments
+
+
+def test_fetch_transcript_disabled():
+    with patch("fetch_transcript.YouTubeTranscriptApi.get_transcript",
+               side_effect=TranscriptsDisabled("dQw4w9WgXcQ")):
+        with pytest.raises(TranscriptsDisabled):
+            fetch_transcript("dQw4w9WgXcQ")
+
+
+def test_fetch_transcript_not_found():
+    mock_transcript_list = MagicMock()
+    with patch("fetch_transcript.YouTubeTranscriptApi.get_transcript",
+               side_effect=NoTranscriptFound("dQw4w9WgXcQ", [], mock_transcript_list)):
+        with pytest.raises(NoTranscriptFound):
+            fetch_transcript("dQw4w9WgXcQ")
