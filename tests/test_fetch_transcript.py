@@ -68,3 +68,9 @@ def test_format_segments_sub_ten_seconds():
 
 def test_format_segments_empty():
     assert format_segments([]) == ""
+
+
+def test_format_segments_truncates_not_rounds():
+    segments = [{"text": "x", "start": 125.4, "duration": 1.0}]
+    result = format_segments(segments)
+    assert result == "[2:05] x\n"
