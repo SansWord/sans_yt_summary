@@ -1,3 +1,4 @@
+import glob
 import sys
 import json
 import argparse
@@ -69,7 +70,8 @@ def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpd
     cmd[1:1] = _auth_flags(cookies_path, from_browser)
     result = subprocess.run(cmd, capture_output=True, text=True)
     title = result.stdout.strip()
-    subtitle_file = os.path.join(tmpdir, f"{video_id}.{lang}.json3")
+    matches = glob.glob(os.path.join(tmpdir, f"{video_id}.*.json3"))
+    subtitle_file = matches[0] if matches else os.path.join(tmpdir, f"{video_id}.{lang}.json3")
     return title, subtitle_file
 
 
