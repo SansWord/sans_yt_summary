@@ -82,18 +82,53 @@ def format_segments(segments: list) -> str:
     return "\n".join(lines) + "\n" if lines else ""
 
 
+def export_cookies(output_path: str) -> None:
+    result = subprocess.run(
+        [
+            "yt-dlp",
+            "--cookies-from-browser", "chrome",
+            "--cookies", output_path,
+            "--skip-download",
+            "--quiet",
+            "https://www.youtube.com",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "Failed to export cookies from Chrome")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Fetch a timed YouTube transcript and save it to a .txt file."
     )
-    parser.add_argument("url", help="YouTube video URL")
+    parser.add_argument("url", nargs="?", help="YouTube video URL")
     parser.add_argument(
         "--cookies",
         metavar="FILE",
         default=None,
         help="Path to a Netscape-format cookies.txt file for sign-in-required videos",
     )
+    parser.add_argument(
+        "--export-cookies",
+        metavar="FILE",
+        default=None,
+        help="Export YouTube cookies from Chrome to FILE and exit",
+    )
     args = parser.parse_args()
+
+    if args.export_cookies:
+        try:
+            export_cookies(args.export_cookies)
+            print(f"Cookies exported to {args.export_cookies}")
+        except RuntimeError as e:
+            print(str(e))
+            sys.exit(1)
+        return
+
+    if not args.url:
+        parser.error("url is required when not using --export-cookies")
 
     try:
         video_id = extract_video_id(args.url)

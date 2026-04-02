@@ -1,7 +1,7 @@
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from fetch_transcript import extract_video_id, _parse_json3, format_segments, fetch_transcript, main
+from fetch_transcript import extract_video_id, _parse_json3, format_segments, fetch_transcript, export_cookies, main
 
 
 # ── extract_video_id ──────────────────────────────────────────────────────────
@@ -187,14 +187,50 @@ def test_fetch_transcript_with_cookies(tmp_path):
 
 
 
+# ── export_cookies ───────────────────────────────────────────────────────────
+
+def test_export_cookies_success(tmp_path):
+    output_file = str(tmp_path / "cookies.txt")
+    with patch("subprocess.run", return_value=MagicMock(returncode=0, stderr="")) as mock_run:
+        export_cookies(output_file)
+    cmd = mock_run.call_args[0][0]
+    assert "--cookies-from-browser" in cmd
+    assert "chrome" in cmd
+    assert "--cookies" in cmd
+    assert output_file in cmd
+
+
+def test_export_cookies_failure():
+    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="Browser not found")):
+        with pytest.raises(RuntimeError, match="Browser not found"):
+            export_cookies("/tmp/cookies.txt")
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def test_main_missing_argument(capsys):
     with patch("sys.argv", ["fetch_transcript.py"]):
         with pytest.raises(SystemExit) as exc:
             main()
-    assert exc.value.code == 2  # argparse exits with 2 for missing required args
+    assert exc.value.code == 2
     assert "url" in capsys.readouterr().err
+
+
+def test_main_export_cookies(capsys, tmp_path):
+    output_file = str(tmp_path / "cookies.txt")
+    with patch("sys.argv", ["fetch_transcript.py", "--export-cookies", output_file]):
+        with patch("subprocess.run", return_value=MagicMock(returncode=0, stderr="")):
+            main()
+    assert f"Cookies exported to {output_file}" in capsys.readouterr().out
+
+
+def test_main_export_cookies_failure(capsys):
+    with patch("sys.argv", ["fetch_transcript.py", "--export-cookies", "/tmp/cookies.txt"]):
+        with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="Browser not found")):
+            with pytest.raises(SystemExit) as exc:
+                main()
+    assert exc.value.code == 1
+    assert "Browser not found" in capsys.readouterr().out
 
 
 def test_main_invalid_url(capsys):
