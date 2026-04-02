@@ -1,5 +1,7 @@
 import pytest
-from fetch_transcript import extract_video_id
+from unittest.mock import patch, MagicMock
+from youtube_transcript_api import TranscriptsDisabled, NoTranscriptFound
+from fetch_transcript import extract_video_id, format_segments, fetch_transcript, main
 
 
 def test_extract_video_id_watch_url():
@@ -42,9 +44,6 @@ def test_extract_video_id_watch_url_missing_v_param():
         extract_video_id("https://www.youtube.com/watch")
 
 
-from fetch_transcript import format_segments
-
-
 def test_format_segments_basic():
     segments = [
         {"text": "Hello world", "start": 0.0, "duration": 2.5},
@@ -76,11 +75,6 @@ def test_format_segments_truncates_not_rounds():
     assert result == "[2:05] x\n"
 
 
-from unittest.mock import patch, MagicMock
-from youtube_transcript_api import TranscriptsDisabled, NoTranscriptFound
-from fetch_transcript import fetch_transcript
-
-
 def test_fetch_transcript_success():
     fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
     mock_transcript = MagicMock()
@@ -103,3 +97,53 @@ def test_fetch_transcript_not_found():
                side_effect=NoTranscriptFound("dQw4w9WgXcQ", [], mock_transcript_list)):
         with pytest.raises(NoTranscriptFound):
             fetch_transcript("dQw4w9WgXcQ")
+
+
+def test_main_missing_argument(capsys):
+    with patch("sys.argv", ["fetch_transcript.py"]):
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Usage:" in captured.out
+
+
+def test_main_invalid_url(capsys):
+    with patch("sys.argv", ["fetch_transcript.py", "https://example.com"]):
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Could not extract video ID" in captured.out
+
+
+def test_main_success(capsys, tmp_path, monkeypatch):
+    fake_segments = [
+        {"text": "Hello", "start": 0.0, "duration": 2.0},
+        {"text": "World", "start": 5.0, "duration": 2.0},
+    ]
+    mock_transcript = MagicMock()
+    mock_transcript.to_raw_data.return_value = fake_segments
+    monkeypatch.chdir(tmp_path)
+    with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
+            main()
+    captured = capsys.readouterr()
+    assert "[0:00] Hello" in captured.out
+    assert "[0:05] World" in captured.out
+    output_file = tmp_path / "abc1234.txt"
+    assert output_file.exists()
+    content = output_file.read_text()
+    assert "[0:00] Hello" in content
+    assert "[0:05] World" in content
+
+
+def test_main_transcript_unavailable(capsys):
+    with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
+                   side_effect=TranscriptsDisabled("abc1234")):
+            with pytest.raises(SystemExit) as exc:
+                main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Transcript not available" in captured.out

@@ -1,6 +1,6 @@
 import sys
 import urllib.parse
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
 
 def extract_video_id(url: str) -> str:
@@ -34,7 +34,35 @@ def format_segments(segments: list) -> str:
 
 
 def main() -> None:
-    pass
+    if len(sys.argv) < 2:
+        print("Usage: python fetch_transcript.py <youtube_url>")
+        sys.exit(1)
+
+    url = sys.argv[1]
+
+    try:
+        video_id = extract_video_id(url)
+    except ValueError as e:
+        print(str(e))
+        sys.exit(1)
+
+    try:
+        segments = fetch_transcript(video_id)
+    except (TranscriptsDisabled, NoTranscriptFound):
+        print(f"Transcript not available for video: {video_id}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error fetching transcript: {e}")
+        sys.exit(1)
+
+    formatted = format_segments(segments)
+
+    print(formatted, end="")
+
+    output_path = f"{video_id}.txt"
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(formatted)
+    print(f"\nTranscript saved to {output_path}")
 
 
 if __name__ == "__main__":
