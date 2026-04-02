@@ -81,26 +81,33 @@ def test_format_segments_truncates_not_rounds():
 
 
 def test_build_api_no_cookies():
-    api = build_api(None)
+    api = build_api()
     from youtube_transcript_api import YouTubeTranscriptApi
     assert isinstance(api, YouTubeTranscriptApi)
 
 
 def test_build_api_with_cookies(tmp_path):
-    # Minimal valid Netscape cookies.txt
     cookies_file = tmp_path / "cookies.txt"
     cookies_file.write_text(
         "# Netscape HTTP Cookie File\n"
         ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\ttest_value\n"
     )
-    api = build_api(str(cookies_file))
+    api = build_api(cookies_path=str(cookies_file))
+    from youtube_transcript_api import YouTubeTranscriptApi
+    assert isinstance(api, YouTubeTranscriptApi)
+
+
+def test_build_api_from_chrome():
+    fake_cookies = [{"name": "SID", "value": "abc", "domain": ".youtube.com"}]
+    with patch("rookiepy.chrome", return_value=fake_cookies):
+        api = build_api(from_chrome=True)
     from youtube_transcript_api import YouTubeTranscriptApi
     assert isinstance(api, YouTubeTranscriptApi)
 
 
 def test_build_api_missing_cookies_file():
     with pytest.raises(FileNotFoundError):
-        build_api("/nonexistent/cookies.txt")
+        build_api(cookies_path="/nonexistent/cookies.txt")
 
 
 def test_fetch_transcript_success():
@@ -217,6 +224,21 @@ def test_main_with_cookies(capsys, tmp_path, monkeypatch):
     ]):
         with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
             main()
+    captured = capsys.readouterr()
+    assert "[0:00] Hello" in captured.out
+    assert (tmp_path / "abc1234.txt").exists()
+
+
+def test_main_from_chrome(capsys, tmp_path, monkeypatch):
+    fake_cookies = [{"name": "SID", "value": "abc", "domain": ".youtube.com"}]
+    fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+    mock_transcript = MagicMock()
+    mock_transcript.to_raw_data.return_value = fake_segments
+    monkeypatch.chdir(tmp_path)
+    with patch("sys.argv", ["fetch_transcript.py", "--from-chrome", "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("rookiepy.chrome", return_value=fake_cookies):
+            with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
+                main()
     captured = capsys.readouterr()
     assert "[0:00] Hello" in captured.out
     assert (tmp_path / "abc1234.txt").exists()

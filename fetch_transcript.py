@@ -25,20 +25,27 @@ def extract_video_id(url: str) -> str:
     raise ValueError(f"Could not extract video ID from URL: {url!r}")
 
 
-def build_api(cookies_path: Optional[str]) -> YouTubeTranscriptApi:
-    if cookies_path is None:
-        return YouTubeTranscriptApi()
-    jar = http.cookiejar.MozillaCookieJar(cookies_path)
-    jar.load(ignore_discard=True, ignore_expires=True)
-    session = requests.Session()
-    session.cookies = requests.utils.cookiejar_from_dict(
-        {c.name: c.value for c in jar}
-    )
-    return YouTubeTranscriptApi(http_client=session)
+def build_api(cookies_path: Optional[str] = None, from_chrome: bool = False) -> YouTubeTranscriptApi:
+    if from_chrome:
+        import rookiepy
+        cookies = rookiepy.chrome(domains=[".youtube.com"])
+        session = requests.Session()
+        for c in cookies:
+            session.cookies.set(c["name"], c["value"], domain=c["domain"])
+        return YouTubeTranscriptApi(http_client=session)
+    if cookies_path is not None:
+        jar = http.cookiejar.MozillaCookieJar(cookies_path)
+        jar.load(ignore_discard=True, ignore_expires=True)
+        session = requests.Session()
+        session.cookies = requests.utils.cookiejar_from_dict(
+            {c.name: c.value for c in jar}
+        )
+        return YouTubeTranscriptApi(http_client=session)
+    return YouTubeTranscriptApi()
 
 
-def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> list:
-    api = build_api(cookies_path)
+def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, from_chrome: bool = False) -> list:
+    api = build_api(cookies_path=cookies_path, from_chrome=from_chrome)
     return api.fetch(video_id).to_raw_data()
 
 
@@ -58,11 +65,18 @@ def main() -> None:
         description="Fetch a timed YouTube transcript and save it to a .txt file."
     )
     parser.add_argument("url", help="YouTube video URL")
-    parser.add_argument(
+    auth = parser.add_mutually_exclusive_group()
+    auth.add_argument(
         "--cookies",
         metavar="FILE",
         default=None,
         help="Path to a Netscape-format cookies.txt file for sign-in-required videos",
+    )
+    auth.add_argument(
+        "--from-chrome",
+        action="store_true",
+        default=False,
+        help="Read YouTube cookies directly from Chrome (no file export needed)",
     )
     args = parser.parse_args()
 
@@ -73,7 +87,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        segments = fetch_transcript(video_id, cookies_path=args.cookies)
+        segments = fetch_transcript(video_id, cookies_path=args.cookies, from_chrome=args.from_chrome)
     except FileNotFoundError:
         print(f"Cookies file not found: {args.cookies}")
         sys.exit(1)
