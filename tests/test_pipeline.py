@@ -77,8 +77,7 @@ def test_pipeline_passes_model_and_prompt(tmp_path, monkeypatch):
     assert captured_kwargs["prompt_path"] == "custom.md"
 
 
-def test_pipeline_uses_browser_cookies_when_file_missing(capsys, tmp_path):
-    missing_cookies = str(tmp_path / "cookies.txt")
+def test_pipeline_uses_browser_cookies_when_no_cookies_flag():
     fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
     captured_kwargs = {}
 
@@ -87,7 +86,7 @@ def test_pipeline_uses_browser_cookies_when_file_missing(capsys, tmp_path):
         captured_kwargs["from_browser"] = from_browser
         return fake_segments, "My Video"
 
-    with patch("sys.argv", ["pipeline.py", "--cookies", missing_cookies, "https://www.youtube.com/watch?v=abc1234"]):
+    with patch("sys.argv", ["pipeline.py", "https://www.youtube.com/watch?v=abc1234"]):
         with patch("pipeline.fetch_transcript", side_effect=fake_fetch):
             with patch("pipeline.save_transcript", return_value="abc1234.txt"):
                 with patch("pipeline.summarize", return_value="My_Video_summary.md"):
@@ -95,10 +94,9 @@ def test_pipeline_uses_browser_cookies_when_file_missing(capsys, tmp_path):
 
     assert captured_kwargs["from_browser"] is True
     assert captured_kwargs["cookies_path"] is None
-    assert "Chrome cookies" in capsys.readouterr().out
 
 
-def test_pipeline_uses_file_cookies_when_file_exists(tmp_path):
+def test_pipeline_uses_file_cookies_when_flag_provided(tmp_path):
     cookies_file = tmp_path / "cookies.txt"
     cookies_file.write_text("# Netscape\n")
     fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]

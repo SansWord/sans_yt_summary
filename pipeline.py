@@ -1,4 +1,3 @@
-import os
 import sys
 import argparse
 from fetch_transcript import extract_video_id, fetch_transcript, save_transcript
@@ -15,11 +14,8 @@ def main() -> None:
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help=f"Prompt .md file (default: {DEFAULT_PROMPT})")
     args = parser.parse_args()
 
-    cookies_path = args.cookies if args.cookies and os.path.exists(args.cookies) else None
-    from_browser = bool(args.cookies) and not os.path.exists(args.cookies) if args.cookies else False
-
-    if from_browser:
-        print(f"Cookies file '{args.cookies}' not found. Using Chrome cookies directly.")
+    cookies_path = args.cookies
+    from_browser = args.cookies is None
 
     try:
         video_id = extract_video_id(args.url)
