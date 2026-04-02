@@ -10,7 +10,7 @@ def extract_video_id(url: str) -> str:
         if video_ids:
             return video_ids[0]
     elif parsed.netloc == "youtu.be":
-        video_id = parsed.path.lstrip("/")
+        video_id = parsed.path.removeprefix("/")
         if video_id:
             return video_id
     raise ValueError(f"Could not extract video ID from URL: {url!r}")
