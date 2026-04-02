@@ -63,6 +63,7 @@ def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpd
         "--sub-format", "json3",
         "--no-playlist",
         "--quiet",
+        "--no-simulate",
         "--print", "%(title)s",
         "-o", output_template,
         f"https://www.youtube.com/watch?v={video_id}",
