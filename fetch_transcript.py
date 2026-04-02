@@ -92,9 +92,10 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None,
         info = json.loads(result.stdout)
     except json.JSONDecodeError:
         return []
-    langs = set()
-    for key in ("subtitles", "automatic_captions"):
-        langs.update(info.get(key, {}).keys())
+    langs = set(info.get("subtitles", {}).keys())
+    original_lang = info.get("language")
+    if original_lang and original_lang in info.get("automatic_captions", {}):
+        langs.add(original_lang)
     return sorted(langs)
 
 

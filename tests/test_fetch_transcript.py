@@ -136,7 +136,7 @@ def test_format_segments_empty():
 
 def _make_fake_run(video_id: str, json3_data: dict, lang: str = "en"):
     """Returns a subprocess.run mock handling both --dump-json and subtitle fetch calls."""
-    langs_json = json.dumps({"automatic_captions": {lang: []}, "subtitles": {}})
+    langs_json = json.dumps({"language": lang, "automatic_captions": {lang: []}, "subtitles": {}})
 
     def fake_run(cmd, **kwargs):
         if "--dump-json" in cmd:
@@ -170,7 +170,7 @@ def test_fetch_transcript_no_subtitles():
 
 def test_fetch_transcript_language_selection():
     fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
-    langs_json = json.dumps({"automatic_captions": {"ja": [], "zh-Hant": []}, "subtitles": {}})
+    langs_json = json.dumps({"language": "ja", "automatic_captions": {"ja": [], "zh-Hant": []}, "subtitles": {"zh-Hant": []}})
 
     def fake_run(cmd, **kwargs):
         if "--dump-json" in cmd:
@@ -200,7 +200,7 @@ def test_fetch_transcript_with_cookies(tmp_path):
     def fake_run(cmd, **kwargs):
         captured_cmds.append(list(cmd))
         if "--dump-json" in cmd:
-            langs_json = json.dumps({"automatic_captions": {"en": []}, "subtitles": {}})
+            langs_json = json.dumps({"language": "en", "automatic_captions": {"en": []}, "subtitles": {}})
             return MagicMock(returncode=0, stdout=langs_json, stderr="")
         output_template = cmd[cmd.index("-o") + 1]
         output_dir = output_template.replace("%(id)s", "abc123")
@@ -327,7 +327,7 @@ def test_fetch_transcript_returns_title():
 
     def fake_run(cmd, **kwargs):
         if "--dump-json" in cmd:
-            langs_json = json.dumps({"automatic_captions": {"en": []}, "subtitles": {}})
+            langs_json = json.dumps({"language": "en", "automatic_captions": {"en": []}, "subtitles": {}})
             return MagicMock(returncode=0, stdout=langs_json, stderr="")
         output_template = cmd[cmd.index("-o") + 1]
         output_dir = output_template.replace("%(id)s", "abc123")
