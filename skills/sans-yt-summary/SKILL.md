@@ -58,4 +58,6 @@ Apply the prompt to the transcript content and produce the summary. Do not call 
 
 Write the summary to a `.md` file in the current directory. Use the video title (from the `.txt` file header) as the filename: sanitize it by replacing spaces with `_` and removing special characters, then append `_summary.md`. For example, a title of "My Video Title" becomes `My_Video_Title_summary.md`.
 
-Do not print the summary in the conversation. Just tell the user the filename it was saved to.
+If the file already exists, overwrite it.
+
+Do not print the summary in the conversation. Just tell the user the filename it was saved to, and whether it was created or updated.
