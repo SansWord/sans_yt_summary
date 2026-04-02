@@ -10,6 +10,10 @@ def extract_video_id(url: str) -> str:
         video_ids = params.get("v", [])
         if video_ids:
             return video_ids[0]
+        # Handle /live/VIDEO_ID and /shorts/VIDEO_ID paths
+        path_parts = parsed.path.strip("/").split("/")
+        if len(path_parts) == 2 and path_parts[0] in ("live", "shorts"):
+            return path_parts[1]
     elif parsed.netloc == "youtu.be":
         video_id = parsed.path.removeprefix("/")
         if video_id:

@@ -39,6 +39,11 @@ def test_extract_video_id_short_url_empty_path():
         extract_video_id("https://youtu.be/")
 
 
+def test_extract_video_id_live_url():
+    url = "https://www.youtube.com/live/ckkbxPE-5wc?si=2JIkBVtwXGMb3dRd"
+    assert extract_video_id(url) == "ckkbxPE-5wc"
+
+
 def test_extract_video_id_watch_url_missing_v_param():
     with pytest.raises(ValueError, match="Could not extract video ID"):
         extract_video_id("https://www.youtube.com/watch")
