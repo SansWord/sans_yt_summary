@@ -92,29 +92,30 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None)
     return sorted(langs)
 
 
-def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> tuple:
-    langs = _list_available_languages(video_id, cookies_path)
-    if not langs:
-        raise RuntimeError(f"No transcripts found for video: {video_id}")
+def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Optional[str] = None) -> tuple:
+    if lang is None:
+        langs = _list_available_languages(video_id, cookies_path)
+        if not langs:
+            raise RuntimeError(f"No transcripts found for video: {video_id}")
 
-    print("Available languages:")
-    for i, lang in enumerate(langs, 1):
-        print(f"  {i}. {lang}")
+        print("Available languages:")
+        for i, l in enumerate(langs, 1):
+            print(f"  {i}. {l}")
 
-    while True:
-        choice = input("Select a language (number or code): ").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(langs):
-            selected = langs[int(choice) - 1]
-            break
-        if choice in langs:
-            selected = choice
-            break
-        print(f"Enter a number 1-{len(langs)} or a language code.")
+        while True:
+            choice = input("Select a language (number or code): ").strip()
+            if choice.isdigit() and 1 <= int(choice) <= len(langs):
+                lang = langs[int(choice) - 1]
+                break
+            if choice in langs:
+                lang = choice
+                break
+            print(f"Enter a number 1-{len(langs)} or a language code.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        title, subtitle_file = _fetch_subtitles(video_id, selected, cookies_path, tmpdir)
+        title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir)
         if not os.path.exists(subtitle_file):
-            raise RuntimeError(f"Could not fetch transcript in language '{selected}' for video: {video_id}")
+            raise RuntimeError(f"Could not fetch transcript in language '{lang}' for video: {video_id}")
 
         with open(subtitle_file) as f:
             data = json.load(f)
@@ -176,6 +177,17 @@ def main() -> None:
         default=None,
         help="Export YouTube cookies from Chrome to FILE and exit",
     )
+    parser.add_argument(
+        "--list-langs",
+        action="store_true",
+        help="List available transcript languages and exit",
+    )
+    parser.add_argument(
+        "--lang",
+        metavar="CODE",
+        default=None,
+        help="Language code to fetch (skips interactive prompt)",
+    )
     args = parser.parse_args()
 
     if args.export_cookies:
@@ -196,8 +208,21 @@ def main() -> None:
         print(str(e))
         sys.exit(1)
 
+    if args.list_langs:
+        try:
+            langs = _list_available_languages(video_id, args.cookies)
+        except RuntimeError as e:
+            print(str(e))
+            sys.exit(1)
+        if not langs:
+            print("No transcripts found.")
+            sys.exit(1)
+        for lang in langs:
+            print(lang)
+        return
+
     try:
-        segments, title = fetch_transcript(video_id, cookies_path=args.cookies)
+        segments, title = fetch_transcript(video_id, cookies_path=args.cookies, lang=args.lang)
     except FileNotFoundError as e:
         print(str(e))
         sys.exit(1)
