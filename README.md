@@ -1,70 +1,75 @@
-# YouTube Transcript Fetcher & Summarizer
+# sans-yt-summary
 
-Fetches the timed transcript of a YouTube video, then summarizes it using Claude AI.
+A Claude Code plugin that fetches a YouTube transcript and summarizes it — directly inside your Claude Code session, no API key required.
+
+## How it works
+
+1. You give Claude a YouTube URL and ask it to summarize
+2. The skill fetches the transcript using `yt-dlp`
+3. Claude reads the transcript and produces a structured summary
+4. The summary is saved as a `.md` file in your current directory
 
 ## Requirements
 
-- Python 3.9+
+- [Claude Code](https://claude.ai/code)
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) installed on your system
+- Chrome browser (for exporting YouTube cookies on first run)
 
 Install yt-dlp via Homebrew (macOS):
 ```bash
 brew install yt-dlp
 ```
 
-Install Python dependencies:
+## Install
+
 ```bash
-pip install -r requirements.txt
+claude plugins install github:SansWord/sans_yt_summary
 ```
-
-## API Key Setup
-
-The summarization step requires an Anthropic API key.
-
-**Step 1 — Get your API key** from [console.anthropic.com](https://console.anthropic.com/) → API Keys.
-
-**Step 2 — Set the environment variable:**
-
-For the current terminal session only:
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-To persist across sessions, add it to your shell profile (`~/.zshrc` or `~/.bashrc`):
-```bash
-echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
-source ~/.zshrc
-```
-
-> Never commit your API key to version control. If you use a `.env` file, add it to `.gitignore`.
 
 ## Usage
 
-### Public videos
+In any Claude Code session, share a YouTube URL and ask for a summary:
+
+> "Summarize this video: https://www.youtube.com/watch?v=VIDEO_ID"
+
+Claude will:
+1. List the available transcript languages and ask which to use
+2. Fetch the transcript (exporting Chrome cookies on first run — you'll see a macOS Keychain prompt)
+3. Save a `<Video_Title>_summary.md` to your current directory
+
+### Cookies
+
+The first time you run the skill, it exports your YouTube cookies from Chrome to `.youtube_cookies.txt` in your current directory. This file contains session tokens — keep it out of version control. The `.gitignore` in this repo already excludes it, but if you're working in a different project directory:
 
 ```bash
-python3 fetch_transcript.py "https://www.youtube.com/watch?v=VIDEO_ID"
+echo ".youtube_cookies.txt" >> .gitignore
 ```
 
-### Sign-in required or bot-blocked videos
+Subsequent runs reuse the cached file. Re-run the skill after a week or two if YouTube starts blocking requests — cookies expire.
 
-YouTube blocks automated requests for some videos. Use a cookies file to authenticate.
+### Custom prompt
 
-**Step 1 — Export your Chrome cookies (one-time setup):**
+To override the default summarization prompt, create `summarize_prompts/summarize.md` in your working directory. The skill will use your version instead of the built-in one.
+
+Use `skills/sans-yt-summary/summarize_prompts/summarize_template.md` as a starting point:
+
 ```bash
-python3 fetch_transcript.py --export-cookies cookies.txt
+mkdir -p summarize_prompts
+cp ~/.claude/plugins/sans-yt-summary/summarize_prompts/summarize_template.md summarize_prompts/summarize.md
+# Edit summarize_prompts/summarize.md to your liking
 ```
 
-This reads cookies from your Chrome browser (macOS Keychain prompt will appear) and saves them to `cookies.txt`.
+The summary language follows your prompt language — write the prompt in French to get a French summary.
 
-**Step 2 — Fetch the transcript:**
+## Running tests
+
 ```bash
-python3 fetch_transcript.py --cookies cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
+cd skills/sans-yt-summary/scripts
+pip install -r ../../../requirements.txt
+pytest tests/
 ```
 
-Re-run Step 1 when the script stops working — cookies expire after days to weeks.
-
-### Supported URL formats
+## Supported URL formats
 
 ```
 https://www.youtube.com/watch?v=VIDEO_ID
@@ -73,68 +78,6 @@ https://www.youtube.com/shorts/VIDEO_ID
 https://youtu.be/VIDEO_ID
 ```
 
-## Output
-
-The transcript is printed to the console and saved to `<video_id>.txt` in the current directory.
-
-Each line is formatted as:
-```
-[M:SS] transcript text here
-```
-
-Example:
-```
-[0:01] Okay so today we are going to be
-[0:04] covering the airline flight ticketing problem.
-[0:07] For the requirements, users can browse available flights.
-```
-
-## Summarization
-
-Summarize a transcript using Claude AI.
-
-### Full pipeline (recommended)
-
-Fetch and summarize in one command:
-
-```bash
-python3 pipeline.py "https://www.youtube.com/watch?v=VIDEO_ID"
-
-# With cookies for sign-in required videos
-python3 pipeline.py --cookies cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
-
-# Use a faster/cheaper model
-python3 pipeline.py --model claude-sonnet-4-6 "URL"
-
-# Use a custom prompt
-python3 pipeline.py --prompt prompts/my_prompt.md "URL"
-```
-
-Output: `<Video_Title>_summary.md` in the current directory.
-
-### Summarize only (transcript already fetched)
-
-```bash
-python3 summarize.py VIDEO_ID.txt
-python3 summarize.py VIDEO_ID.txt --model claude-sonnet-4-6
-python3 summarize.py VIDEO_ID.txt --prompt prompts/my_prompt.md
-```
-
-### Custom prompts
-
-Copy `prompts/summarize_template.md` as a starting point:
-
-```bash
-cp prompts/summarize_template.md prompts/my_prompt.md
-# Edit prompts/my_prompt.md to your liking
-python3 pipeline.py --prompt prompts/my_prompt.md "URL"
-```
-
-The summary language follows the prompt language — Traditional Chinese prompt produces a Chinese summary, English prompt produces an English summary.
-
 ## Security note
 
-`cookies.txt` contains your YouTube session tokens in plaintext. Keep it out of version control:
-```bash
-echo "cookies.txt" >> .gitignore
-```
+`.youtube_cookies.txt` contains your YouTube session tokens in plaintext. The `.gitignore` in this repo excludes it by default. Never commit this file.
