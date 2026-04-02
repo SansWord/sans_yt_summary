@@ -44,7 +44,7 @@ def test_pipeline_passes_cookies(tmp_path):
 
     captured_kwargs = {}
 
-    def fake_fetch(video_id, cookies_path=None):
+    def fake_fetch(video_id, cookies_path=None, from_browser=False):
         captured_kwargs["cookies_path"] = cookies_path
         return fake_segments, "My Video"
 
@@ -77,43 +77,43 @@ def test_pipeline_passes_model_and_prompt(tmp_path, monkeypatch):
     assert captured_kwargs["prompt_path"] == "custom.md"
 
 
-def test_pipeline_exports_cookies_when_missing(capsys, tmp_path):
+def test_pipeline_uses_browser_cookies_when_file_missing(capsys, tmp_path):
     missing_cookies = str(tmp_path / "cookies.txt")
     fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+    captured_kwargs = {}
+
+    def fake_fetch(video_id, cookies_path=None, from_browser=False, **kwargs):
+        captured_kwargs["cookies_path"] = cookies_path
+        captured_kwargs["from_browser"] = from_browser
+        return fake_segments, "My Video"
 
     with patch("sys.argv", ["pipeline.py", "--cookies", missing_cookies, "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("pipeline.export_cookies") as mock_export:
-            with patch("pipeline.fetch_transcript", return_value=(fake_segments, "My Video")):
-                with patch("pipeline.save_transcript", return_value="abc1234.txt"):
-                    with patch("pipeline.summarize", return_value="My_Video_summary.md"):
-                        main()
+        with patch("pipeline.fetch_transcript", side_effect=fake_fetch):
+            with patch("pipeline.save_transcript", return_value="abc1234.txt"):
+                with patch("pipeline.summarize", return_value="My_Video_summary.md"):
+                    main()
 
-    mock_export.assert_called_once_with(missing_cookies)
-    assert "Exporting from Chrome" in capsys.readouterr().out
+    assert captured_kwargs["from_browser"] is True
+    assert captured_kwargs["cookies_path"] is None
+    assert "Chrome cookies" in capsys.readouterr().out
 
 
-def test_pipeline_skips_export_when_cookies_exist(tmp_path):
+def test_pipeline_uses_file_cookies_when_file_exists(tmp_path):
     cookies_file = tmp_path / "cookies.txt"
     cookies_file.write_text("# Netscape\n")
     fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+    captured_kwargs = {}
+
+    def fake_fetch(video_id, cookies_path=None, from_browser=False, **kwargs):
+        captured_kwargs["cookies_path"] = cookies_path
+        captured_kwargs["from_browser"] = from_browser
+        return fake_segments, "My Video"
 
     with patch("sys.argv", ["pipeline.py", "--cookies", str(cookies_file), "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("pipeline.export_cookies") as mock_export:
-            with patch("pipeline.fetch_transcript", return_value=(fake_segments, "My Video")):
-                with patch("pipeline.save_transcript", return_value="abc1234.txt"):
-                    with patch("pipeline.summarize", return_value="My_Video_summary.md"):
-                        main()
+        with patch("pipeline.fetch_transcript", side_effect=fake_fetch):
+            with patch("pipeline.save_transcript", return_value="abc1234.txt"):
+                with patch("pipeline.summarize", return_value="My_Video_summary.md"):
+                    main()
 
-    mock_export.assert_not_called()
-
-
-def test_pipeline_export_cookies_failure(capsys, tmp_path):
-    missing_cookies = str(tmp_path / "cookies.txt")
-
-    with patch("sys.argv", ["pipeline.py", "--cookies", missing_cookies, "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("pipeline.export_cookies", side_effect=RuntimeError("Browser not found")):
-            with pytest.raises(SystemExit) as exc:
-                main()
-
-    assert exc.value.code == 1
-    assert "Browser not found" in capsys.readouterr().out
+    assert captured_kwargs["cookies_path"] == str(cookies_file)
+    assert captured_kwargs["from_browser"] is False

@@ -42,7 +42,15 @@ def _parse_json3(data: dict) -> list:
     return segments
 
 
-def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpdir: str) -> tuple:
+def _auth_flags(cookies_path: Optional[str], from_browser: bool) -> list:
+    if from_browser:
+        return ["--cookies-from-browser", "chrome"]
+    if cookies_path is not None:
+        return ["--cookies", cookies_path]
+    return []
+
+
+def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpdir: str, from_browser: bool = False) -> tuple:
     """Run yt-dlp to download subtitles for a given language. Returns (title, subtitle_path)."""
     output_template = os.path.join(tmpdir, "%(id)s")
     cmd = [
@@ -58,15 +66,14 @@ def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpd
         "-o", output_template,
         f"https://www.youtube.com/watch?v={video_id}",
     ]
-    if cookies_path is not None:
-        cmd[1:1] = ["--cookies", cookies_path]
+    cmd[1:1] = _auth_flags(cookies_path, from_browser)
     result = subprocess.run(cmd, capture_output=True, text=True)
     title = result.stdout.strip()
     subtitle_file = os.path.join(tmpdir, f"{video_id}.{lang}.json3")
     return title, subtitle_file
 
 
-def _list_available_languages(video_id: str, cookies_path: Optional[str] = None) -> list:
+def _list_available_languages(video_id: str, cookies_path: Optional[str] = None, from_browser: bool = False) -> list:
     """Return sorted list of available subtitle/caption language codes via yt-dlp --dump-json."""
     cmd = [
         "yt-dlp",
@@ -75,8 +82,7 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None)
         "--quiet",
         f"https://www.youtube.com/watch?v={video_id}",
     ]
-    if cookies_path is not None:
-        cmd[1:1] = ["--cookies", cookies_path]
+    cmd[1:1] = _auth_flags(cookies_path, from_browser)
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "Failed to fetch video info")
@@ -92,9 +98,9 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None)
     return sorted(langs)
 
 
-def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Optional[str] = None) -> tuple:
+def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Optional[str] = None, from_browser: bool = False) -> tuple:
     if lang is None:
-        langs = _list_available_languages(video_id, cookies_path)
+        langs = _list_available_languages(video_id, cookies_path, from_browser)
         if not langs:
             raise RuntimeError(f"No transcripts found for video: {video_id}")
 
@@ -113,7 +119,7 @@ def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Op
             print(f"Enter a number 1-{len(langs)} or a language code.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir)
+        title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir, from_browser)
         if not os.path.exists(subtitle_file):
             raise RuntimeError(f"Could not fetch transcript in language '{lang}' for video: {video_id}")
 

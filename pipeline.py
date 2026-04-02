@@ -1,7 +1,7 @@
 import os
 import sys
 import argparse
-from fetch_transcript import extract_video_id, fetch_transcript, save_transcript, export_cookies
+from fetch_transcript import extract_video_id, fetch_transcript, save_transcript
 from summarize import summarize, DEFAULT_MODEL, DEFAULT_PROMPT
 
 
@@ -15,14 +15,11 @@ def main() -> None:
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help=f"Prompt .md file (default: {DEFAULT_PROMPT})")
     args = parser.parse_args()
 
-    if args.cookies and not os.path.exists(args.cookies):
-        print(f"Cookies file not found. Exporting from Chrome to {args.cookies}...")
-        try:
-            export_cookies(args.cookies)
-            print(f"Cookies exported to {args.cookies}")
-        except RuntimeError as e:
-            print(str(e))
-            sys.exit(1)
+    cookies_path = args.cookies if args.cookies and os.path.exists(args.cookies) else None
+    from_browser = bool(args.cookies) and not os.path.exists(args.cookies) if args.cookies else False
+
+    if from_browser:
+        print(f"Cookies file '{args.cookies}' not found. Using Chrome cookies directly.")
 
     try:
         video_id = extract_video_id(args.url)
@@ -32,7 +29,7 @@ def main() -> None:
 
     print(f"Fetching transcript for video: {video_id}")
     try:
-        segments, title = fetch_transcript(video_id, cookies_path=args.cookies)
+        segments, title = fetch_transcript(video_id, cookies_path=cookies_path, from_browser=from_browser)
     except RuntimeError as e:
         print(str(e))
         sys.exit(1)
