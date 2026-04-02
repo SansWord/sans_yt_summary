@@ -147,3 +147,26 @@ def test_main_transcript_unavailable(capsys):
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Transcript not available" in captured.out
+
+
+def test_main_no_transcript_found(capsys):
+    mock_transcript_list = MagicMock()
+    with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
+                   side_effect=NoTranscriptFound("abc1234", [], mock_transcript_list)):
+            with pytest.raises(SystemExit) as exc:
+                main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Transcript not available" in captured.out
+
+
+def test_main_network_error(capsys):
+    with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
+                   side_effect=Exception("Connection timeout")):
+            with pytest.raises(SystemExit) as exc:
+                main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Error fetching transcript" in captured.out
