@@ -1,6 +1,6 @@
-# YouTube Transcript Fetcher
+# YouTube Transcript Fetcher & Summarizer
 
-Fetches the timed transcript of a YouTube video and saves it to a `.txt` file.
+Fetches the timed transcript of a YouTube video, then summarizes it using Claude AI.
 
 ## Requirements
 
@@ -16,6 +16,27 @@ Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+## API Key Setup
+
+The summarization step requires an Anthropic API key.
+
+**Step 1 — Get your API key** from [console.anthropic.com](https://console.anthropic.com/) → API Keys.
+
+**Step 2 — Set the environment variable:**
+
+For the current terminal session only:
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+To persist across sessions, add it to your shell profile (`~/.zshrc` or `~/.bashrc`):
+```bash
+echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
+source ~/.zshrc
+```
+
+> Never commit your API key to version control. If you use a `.env` file, add it to `.gitignore`.
 
 ## Usage
 
