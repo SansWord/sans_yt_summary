@@ -78,7 +78,9 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None)
     if cookies_path is not None:
         cmd[1:1] = ["--cookies", cookies_path]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0 or not result.stdout.strip():
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "Failed to fetch video info")
+    if not result.stdout.strip():
         return []
     try:
         info = json.loads(result.stdout)

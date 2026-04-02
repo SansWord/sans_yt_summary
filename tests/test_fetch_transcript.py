@@ -162,9 +162,9 @@ def test_fetch_transcript_success():
 
 
 def test_fetch_transcript_no_subtitles():
-    no_langs = MagicMock(returncode=1, stdout="", stderr="")
-    with patch("subprocess.run", return_value=no_langs):
-        with pytest.raises(RuntimeError, match="No transcripts found"):
+    failed = MagicMock(returncode=1, stdout="", stderr="Sign in to confirm you're not a bot.")
+    with patch("subprocess.run", return_value=failed):
+        with pytest.raises(RuntimeError, match="Sign in to confirm"):
             fetch_transcript("abc123")
 
 
@@ -298,13 +298,13 @@ def test_main_success(capsys, tmp_path, monkeypatch):
 
 
 def test_main_no_transcript(capsys):
-    no_langs = MagicMock(returncode=1, stdout="", stderr="")
+    failed = MagicMock(returncode=1, stdout="", stderr="Sign in to confirm you're not a bot.")
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("subprocess.run", return_value=no_langs):
+        with patch("subprocess.run", return_value=failed):
             with pytest.raises(SystemExit) as exc:
                 main()
     assert exc.value.code == 1
-    assert "No transcripts found" in capsys.readouterr().out
+    assert "Sign in to confirm" in capsys.readouterr().out
 
 
 def test_main_with_cookies(capsys, tmp_path, monkeypatch):
