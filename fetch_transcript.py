@@ -19,7 +19,7 @@ def extract_video_id(url: str) -> str:
 
 def fetch_transcript(video_id: str) -> list:
     api = YouTubeTranscriptApi()
-    return api.fetch(video_id)
+    return api.fetch(video_id).to_raw_data()
 
 
 def format_segments(segments: list) -> str:
