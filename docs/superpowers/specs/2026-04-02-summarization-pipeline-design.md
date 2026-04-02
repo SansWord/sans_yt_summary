@@ -29,7 +29,7 @@ python3 fetch_transcript.py "URL" [--cookies cookies.txt]
 - Override: `--model claude-sonnet-4-6` (or any valid model ID)
 
 **Prompt flag:**
-- Default: `prompts/summarize_template.md`
+- Default: `prompts/summarize.md`
 - Override: `--prompt prompts/custom.md`
 
 ---
@@ -41,7 +41,8 @@ python3 fetch_transcript.py "URL" [--cookies cookies.txt]
 | `fetch_transcript.py` | Modify | Add `---` metadata header to saved `.txt` |
 | `summarize.py` | Create | Read `.txt`, call Claude, save `_summary.md` |
 | `pipeline.py` | Create | Orchestrate fetch + summarize |
-| `prompts/summarize_template.md` | Create | Default prompt template (Traditional Chinese) |
+| `prompts/summarize.md` | Create | Default prompt (Traditional Chinese, ready to use) |
+| `prompts/summarize_template.md` | Create | Template with comments explaining placeholders, for users who want to write their own prompt |
 | `tests/test_summarize.py` | Create | Unit tests for summarize.py |
 | `tests/test_pipeline.py` | Create | Unit tests for pipeline.py |
 | `tests/test_fetch_transcript.py` | Modify | Add tests for metadata header |
@@ -88,9 +89,13 @@ Thin orchestrator — no business logic:
 1. Call `fetch_transcript.fetch_transcript()` → get `<video_id>.txt`
 2. Call `summarize.summarize()` → get `<title>_summary.md`
 
+### `prompts/summarize.md`
+
+The ready-to-use default prompt — prefilled with the Traditional Chinese system design prompt. Hardcoded URL replaced with `{{url}}`. Transcript injected via `{{transcript}}` at the end.
+
 ### `prompts/summarize_template.md`
 
-Prefilled with user's Traditional Chinese system design prompt. Hardcoded URL replaced with `{{url}}`. Transcript injected via `{{transcript}}` at the end.
+A starter template with inline comments explaining each placeholder and section. Intended for users who want to write their own prompt. Not used by the script directly.
 
 ---
 
