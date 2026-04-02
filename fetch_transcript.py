@@ -103,32 +103,47 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None,
 
 
 def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Optional[str] = None, from_browser: bool = False) -> tuple:
-    if lang is None:
-        langs = _list_available_languages(video_id, cookies_path, from_browser)
-        if not langs:
-            raise RuntimeError(f"No transcripts found for video: {video_id}")
+    # Export browser cookies once to a temp file so all yt-dlp calls reuse it,
+    # avoiding repeated macOS Keychain prompts.
+    tmp_cookies = None
+    if from_browser:
+        import tempfile as _tf
+        fd, tmp_cookies = _tf.mkstemp(suffix=".txt")
+        os.close(fd)
+        export_cookies(tmp_cookies)
+        cookies_path = tmp_cookies
+        from_browser = False
 
-        print("Available languages:")
-        for i, l in enumerate(langs, 1):
-            print(f"  {i}. {l}")
+    try:
+        if lang is None:
+            langs = _list_available_languages(video_id, cookies_path, from_browser)
+            if not langs:
+                raise RuntimeError(f"No transcripts found for video: {video_id}")
 
-        while True:
-            choice = input("Select a language (number or code): ").strip()
-            if choice.isdigit() and 1 <= int(choice) <= len(langs):
-                lang = langs[int(choice) - 1]
-                break
-            if choice in langs:
-                lang = choice
-                break
-            print(f"Enter a number 1-{len(langs)} or a language code.")
+            print("Available languages:")
+            for i, l in enumerate(langs, 1):
+                print(f"  {i}. {l}")
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir, from_browser)
-        if not os.path.exists(subtitle_file):
-            raise RuntimeError(f"Could not fetch transcript in language '{lang}' for video: {video_id}")
+            while True:
+                choice = input("Select a language (number or code): ").strip()
+                if choice.isdigit() and 1 <= int(choice) <= len(langs):
+                    lang = langs[int(choice) - 1]
+                    break
+                if choice in langs:
+                    lang = choice
+                    break
+                print(f"Enter a number 1-{len(langs)} or a language code.")
 
-        with open(subtitle_file) as f:
-            data = json.load(f)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir, from_browser)
+            if not os.path.exists(subtitle_file):
+                raise RuntimeError(f"Could not fetch transcript in language '{lang}' for video: {video_id}")
+
+            with open(subtitle_file) as f:
+                data = json.load(f)
+    finally:
+        if tmp_cookies and os.path.exists(tmp_cookies):
+            os.unlink(tmp_cookies)
 
     return _parse_json3(data), title
 
