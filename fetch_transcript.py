@@ -1,13 +1,6 @@
 import sys
 import urllib.parse
-from youtube_transcript_api import YouTubeTranscriptApi as _YouTubeTranscriptApi
-
-
-class YouTubeTranscriptApi:
-    @staticmethod
-    def get_transcript(video_id: str) -> list:
-        api = _YouTubeTranscriptApi()
-        return api.fetch(video_id)
+from youtube_transcript_api import YouTubeTranscriptApi
 
 
 def extract_video_id(url: str) -> str:
@@ -25,7 +18,8 @@ def extract_video_id(url: str) -> str:
 
 
 def fetch_transcript(video_id: str) -> list:
-    return YouTubeTranscriptApi.get_transcript(video_id)
+    api = YouTubeTranscriptApi()
+    return api.fetch(video_id)
 
 
 def format_segments(segments: list) -> str:
