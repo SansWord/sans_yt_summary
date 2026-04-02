@@ -40,3 +40,31 @@ def test_extract_video_id_short_url_empty_path():
 def test_extract_video_id_watch_url_missing_v_param():
     with pytest.raises(ValueError, match="Could not extract video ID"):
         extract_video_id("https://www.youtube.com/watch")
+
+
+from fetch_transcript import format_segments
+
+
+def test_format_segments_basic():
+    segments = [
+        {"text": "Hello world", "start": 0.0, "duration": 2.5},
+        {"text": "This is a test", "start": 65.0, "duration": 3.0},
+    ]
+    result = format_segments(segments)
+    assert result == "[0:00] Hello world\n[1:05] This is a test\n"
+
+
+def test_format_segments_exact_minute():
+    segments = [{"text": "On the minute", "start": 120.0, "duration": 1.0}]
+    result = format_segments(segments)
+    assert result == "[2:00] On the minute\n"
+
+
+def test_format_segments_sub_ten_seconds():
+    segments = [{"text": "Quick start", "start": 5.9, "duration": 1.0}]
+    result = format_segments(segments)
+    assert result == "[0:05] Quick start\n"
+
+
+def test_format_segments_empty():
+    assert format_segments([]) == ""

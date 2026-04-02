@@ -21,7 +21,14 @@ def fetch_transcript(video_id: str) -> list:
 
 
 def format_segments(segments: list) -> str:
-    pass
+    lines = []
+    for segment in segments:
+        total_seconds = int(segment["start"])
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        timestamp = f"{minutes}:{seconds:02d}"
+        lines.append(f"[{timestamp}] {segment['text']}")
+    return "\n".join(lines) + "\n" if lines else ""
 
 
 def main() -> None:
