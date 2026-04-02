@@ -156,9 +156,37 @@ def test_fetch_transcript_success():
 
 
 def test_fetch_transcript_no_subtitles():
-    with patch("subprocess.run", return_value=MagicMock(returncode=1, stdout="", stderr="")):
-        with pytest.raises(RuntimeError, match="No English transcript found"):
+    # First call: _fetch_subtitles (no file written); second call: _list_available_languages (no langs)
+    no_file = MagicMock(returncode=0, stdout="", stderr="")
+    no_langs = MagicMock(returncode=1, stdout="", stderr="")
+    with patch("subprocess.run", side_effect=[no_file, no_langs]):
+        with pytest.raises(RuntimeError, match="No transcripts found"):
             fetch_transcript("abc123")
+
+
+def test_fetch_transcript_language_selection():
+    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
+    langs_json = json.dumps({"automatic_captions": {"zh-Hant": [], "ja": []}, "subtitles": {}})
+
+    def fake_run(cmd, **kwargs):
+        if "--dump-json" in cmd:
+            return MagicMock(returncode=0, stdout=langs_json, stderr="")
+        # _fetch_subtitles call — write subtitle file for zh-Hant
+        lang = cmd[cmd.index("--sub-lang") + 1]
+        if lang != "en":
+            output_template = cmd[cmd.index("-o") + 1]
+            output_dir = output_template.replace("%(id)s", "abc123")
+            with open(output_dir + f".{lang}.json3", "w") as f:
+                json.dump(fake_data, f)
+            return MagicMock(returncode=0, stdout="My Video\n", stderr="")
+        return MagicMock(returncode=0, stdout="", stderr="")
+
+    with patch("subprocess.run", side_effect=fake_run):
+        with patch("builtins.input", return_value="1"):
+            segments, title = fetch_transcript("abc123")
+
+    assert segments == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+    assert title == "My Video"
 
 
 def test_fetch_transcript_with_cookies(tmp_path):
@@ -262,12 +290,14 @@ def test_main_success(capsys, tmp_path, monkeypatch):
 
 
 def test_main_no_transcript(capsys):
+    no_file = MagicMock(returncode=0, stdout="", stderr="")
+    no_langs = MagicMock(returncode=1, stdout="", stderr="")
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="")):
+        with patch("subprocess.run", side_effect=[no_file, no_langs]):
             with pytest.raises(SystemExit) as exc:
                 main()
     assert exc.value.code == 1
-    assert "No English transcript found" in capsys.readouterr().out
+    assert "No transcripts found" in capsys.readouterr().out
 
 
 

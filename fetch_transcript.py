@@ -42,30 +42,80 @@ def _parse_json3(data: dict) -> list:
     return segments
 
 
+def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpdir: str) -> tuple:
+    """Run yt-dlp to download subtitles for a given language. Returns (title, subtitle_path)."""
+    output_template = os.path.join(tmpdir, "%(id)s")
+    cmd = [
+        "yt-dlp",
+        "--write-auto-subs",
+        "--write-subs",
+        "--skip-download",
+        "--sub-lang", lang,
+        "--sub-format", "json3",
+        "--no-playlist",
+        "--quiet",
+        "--print", "%(title)s",
+        "-o", output_template,
+        f"https://www.youtube.com/watch?v={video_id}",
+    ]
+    if cookies_path is not None:
+        cmd[1:1] = ["--cookies", cookies_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    title = result.stdout.strip()
+    subtitle_file = os.path.join(tmpdir, f"{video_id}.{lang}.json3")
+    return title, subtitle_file
+
+
+def _list_available_languages(video_id: str, cookies_path: Optional[str] = None) -> list:
+    """Return sorted list of available subtitle/caption language codes via yt-dlp --dump-json."""
+    cmd = [
+        "yt-dlp",
+        "--dump-json",
+        "--skip-download",
+        "--quiet",
+        f"https://www.youtube.com/watch?v={video_id}",
+    ]
+    if cookies_path is not None:
+        cmd[1:1] = ["--cookies", cookies_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    try:
+        info = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return []
+    langs = set()
+    for key in ("subtitles", "automatic_captions"):
+        langs.update(info.get(key, {}).keys())
+    return sorted(langs)
+
+
 def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> tuple:
     with tempfile.TemporaryDirectory() as tmpdir:
-        output_template = os.path.join(tmpdir, "%(id)s")
-        cmd = [
-            "yt-dlp",
-            "--write-auto-subs",
-            "--skip-download",
-            "--sub-lang", "en",
-            "--sub-format", "json3",
-            "--no-playlist",
-            "--quiet",
-            "--print", "%(title)s",
-            "-o", output_template,
-            f"https://www.youtube.com/watch?v={video_id}",
-        ]
-        if cookies_path is not None:
-            cmd[1:1] = ["--cookies", cookies_path]
+        title, subtitle_file = _fetch_subtitles(video_id, "en", cookies_path, tmpdir)
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        title = result.stdout.strip()
-
-        subtitle_file = os.path.join(tmpdir, f"{video_id}.en.json3")
         if not os.path.exists(subtitle_file):
-            raise RuntimeError(f"No English transcript found for video: {video_id}")
+            langs = _list_available_languages(video_id, cookies_path)
+            if not langs:
+                raise RuntimeError(f"No transcripts found for video: {video_id}")
+
+            print("No English transcript found. Available languages:")
+            for i, lang in enumerate(langs, 1):
+                print(f"  {i}. {lang}")
+
+            while True:
+                choice = input("Select a language (number or code): ").strip()
+                if choice.isdigit() and 1 <= int(choice) <= len(langs):
+                    selected = langs[int(choice) - 1]
+                    break
+                if choice in langs:
+                    selected = choice
+                    break
+                print(f"Enter a number 1-{len(langs)} or a language code.")
+
+            title, subtitle_file = _fetch_subtitles(video_id, selected, cookies_path, tmpdir)
+            if not os.path.exists(subtitle_file):
+                raise RuntimeError(f"Could not fetch transcript in language '{selected}' for video: {video_id}")
 
         with open(subtitle_file) as f:
             data = json.load(f)
