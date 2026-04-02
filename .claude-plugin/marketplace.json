@@ -8,7 +8,7 @@
     {
       "name": "sans-yt-summary",
       "description": "Fetch and summarize YouTube videos using Claude",
-      "source": "."
+      "source": "./"
     }
   ]
 }
