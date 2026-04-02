@@ -134,15 +134,20 @@ def test_format_segments_empty():
 
 # ── fetch_transcript ──────────────────────────────────────────────────────────
 
-def _make_fake_run(video_id: str, json3_data: dict):
-    """Returns a subprocess.run mock that writes a json3 file into the temp dir."""
+def _make_fake_run(video_id: str, json3_data: dict, lang: str = "en"):
+    """Returns a subprocess.run mock handling both --dump-json and subtitle fetch calls."""
+    langs_json = json.dumps({"automatic_captions": {lang: []}, "subtitles": {}})
+
     def fake_run(cmd, **kwargs):
+        if "--dump-json" in cmd:
+            return MagicMock(returncode=0, stdout=langs_json, stderr="")
         output_template = cmd[cmd.index("-o") + 1]
         output_dir = output_template.replace("%(id)s", video_id)
-        subtitle_path = output_dir + ".en.json3"
-        with open(subtitle_path, "w") as f:
+        sub_lang = cmd[cmd.index("--sub-lang") + 1]
+        with open(output_dir + f".{sub_lang}.json3", "w") as f:
             json.dump(json3_data, f)
         return MagicMock(returncode=0, stdout="", stderr="")
+
     return fake_run
 
 
@@ -151,38 +156,34 @@ def test_fetch_transcript_success():
         "events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]
     }
     with patch("subprocess.run", side_effect=_make_fake_run("abc123", fake_data)):
-        segments, title = fetch_transcript("abc123")
+        with patch("builtins.input", return_value="1"):
+            segments, title = fetch_transcript("abc123")
     assert segments == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
 
 
 def test_fetch_transcript_no_subtitles():
-    # First call: _fetch_subtitles (no file written); second call: _list_available_languages (no langs)
-    no_file = MagicMock(returncode=0, stdout="", stderr="")
     no_langs = MagicMock(returncode=1, stdout="", stderr="")
-    with patch("subprocess.run", side_effect=[no_file, no_langs]):
+    with patch("subprocess.run", return_value=no_langs):
         with pytest.raises(RuntimeError, match="No transcripts found"):
             fetch_transcript("abc123")
 
 
 def test_fetch_transcript_language_selection():
     fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
-    langs_json = json.dumps({"automatic_captions": {"zh-Hant": [], "ja": []}, "subtitles": {}})
+    langs_json = json.dumps({"automatic_captions": {"ja": [], "zh-Hant": []}, "subtitles": {}})
 
     def fake_run(cmd, **kwargs):
         if "--dump-json" in cmd:
             return MagicMock(returncode=0, stdout=langs_json, stderr="")
-        # _fetch_subtitles call — write subtitle file for zh-Hant
-        lang = cmd[cmd.index("--sub-lang") + 1]
-        if lang != "en":
-            output_template = cmd[cmd.index("-o") + 1]
-            output_dir = output_template.replace("%(id)s", "abc123")
-            with open(output_dir + f".{lang}.json3", "w") as f:
-                json.dump(fake_data, f)
-            return MagicMock(returncode=0, stdout="My Video\n", stderr="")
-        return MagicMock(returncode=0, stdout="", stderr="")
+        output_template = cmd[cmd.index("-o") + 1]
+        output_dir = output_template.replace("%(id)s", "abc123")
+        sub_lang = cmd[cmd.index("--sub-lang") + 1]
+        with open(output_dir + f".{sub_lang}.json3", "w") as f:
+            json.dump(fake_data, f)
+        return MagicMock(returncode=0, stdout="My Video\n", stderr="")
 
     with patch("subprocess.run", side_effect=fake_run):
-        with patch("builtins.input", return_value="1"):
+        with patch("builtins.input", return_value="2"):  # selects zh-Hant
             segments, title = fetch_transcript("abc123")
 
     assert segments == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
@@ -194,21 +195,27 @@ def test_fetch_transcript_with_cookies(tmp_path):
     cookies_file.write_text("# Netscape HTTP Cookie File\n")
     fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
 
-    captured_cmd = []
+    captured_cmds = []
 
     def fake_run(cmd, **kwargs):
-        captured_cmd.extend(cmd)
+        captured_cmds.append(list(cmd))
+        if "--dump-json" in cmd:
+            langs_json = json.dumps({"automatic_captions": {"en": []}, "subtitles": {}})
+            return MagicMock(returncode=0, stdout=langs_json, stderr="")
         output_template = cmd[cmd.index("-o") + 1]
         output_dir = output_template.replace("%(id)s", "abc123")
-        with open(output_dir + ".en.json3", "w") as f:
+        sub_lang = cmd[cmd.index("--sub-lang") + 1]
+        with open(output_dir + f".{sub_lang}.json3", "w") as f:
             json.dump(fake_data, f)
         return MagicMock(returncode=0, stdout="", stderr="")
 
     with patch("subprocess.run", side_effect=fake_run):
-        fetch_transcript("abc123", cookies_path=str(cookies_file))
+        with patch("builtins.input", return_value="1"):
+            fetch_transcript("abc123", cookies_path=str(cookies_file))
 
-    assert "--cookies" in captured_cmd
-    assert str(cookies_file) in captured_cmd
+    all_args = [arg for cmd in captured_cmds for arg in cmd]
+    assert "--cookies" in all_args
+    assert str(cookies_file) in all_args
 
 
 
@@ -276,7 +283,8 @@ def test_main_success(capsys, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
         with patch("subprocess.run", side_effect=_make_fake_run("abc1234", fake_data)):
-            main()
+            with patch("builtins.input", return_value="1"):
+                main()
     captured = capsys.readouterr()
     assert "[0:00] Hello" in captured.out
     assert "[0:05] World" in captured.out
@@ -290,15 +298,13 @@ def test_main_success(capsys, tmp_path, monkeypatch):
 
 
 def test_main_no_transcript(capsys):
-    no_file = MagicMock(returncode=0, stdout="", stderr="")
     no_langs = MagicMock(returncode=1, stdout="", stderr="")
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("subprocess.run", side_effect=[no_file, no_langs]):
+        with patch("subprocess.run", return_value=no_langs):
             with pytest.raises(SystemExit) as exc:
                 main()
     assert exc.value.code == 1
     assert "No transcripts found" in capsys.readouterr().out
-
 
 
 def test_main_with_cookies(capsys, tmp_path, monkeypatch):
@@ -309,7 +315,8 @@ def test_main_with_cookies(capsys, tmp_path, monkeypatch):
 
     with patch("sys.argv", ["fetch_transcript.py", "--cookies", str(cookies_file), "https://www.youtube.com/watch?v=abc1234"]):
         with patch("subprocess.run", side_effect=_make_fake_run("abc1234", fake_data)):
-            main()
+            with patch("builtins.input", return_value="1"):
+                main()
     assert "[0:00] Hello" in capsys.readouterr().out
 
 
@@ -319,15 +326,19 @@ def test_fetch_transcript_returns_title():
     }
 
     def fake_run(cmd, **kwargs):
+        if "--dump-json" in cmd:
+            langs_json = json.dumps({"automatic_captions": {"en": []}, "subtitles": {}})
+            return MagicMock(returncode=0, stdout=langs_json, stderr="")
         output_template = cmd[cmd.index("-o") + 1]
         output_dir = output_template.replace("%(id)s", "abc123")
-        import json
-        with open(output_dir + ".en.json3", "w") as f:
+        sub_lang = cmd[cmd.index("--sub-lang") + 1]
+        with open(output_dir + f".{sub_lang}.json3", "w") as f:
             json.dump(fake_data, f)
         return MagicMock(returncode=0, stdout="My Video Title\n", stderr="")
 
     with patch("subprocess.run", side_effect=fake_run):
-        segments, title = fetch_transcript("abc123")
+        with patch("builtins.input", return_value="1"):
+            segments, title = fetch_transcript("abc123")
 
     assert title == "My Video Title"
     assert segments == [{"text": "Hello", "start": 0.0, "duration": 2.0}]

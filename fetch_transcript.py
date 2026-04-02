@@ -91,31 +91,28 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None)
 
 
 def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> tuple:
+    langs = _list_available_languages(video_id, cookies_path)
+    if not langs:
+        raise RuntimeError(f"No transcripts found for video: {video_id}")
+
+    print("Available languages:")
+    for i, lang in enumerate(langs, 1):
+        print(f"  {i}. {lang}")
+
+    while True:
+        choice = input("Select a language (number or code): ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(langs):
+            selected = langs[int(choice) - 1]
+            break
+        if choice in langs:
+            selected = choice
+            break
+        print(f"Enter a number 1-{len(langs)} or a language code.")
+
     with tempfile.TemporaryDirectory() as tmpdir:
-        title, subtitle_file = _fetch_subtitles(video_id, "en", cookies_path, tmpdir)
-
+        title, subtitle_file = _fetch_subtitles(video_id, selected, cookies_path, tmpdir)
         if not os.path.exists(subtitle_file):
-            langs = _list_available_languages(video_id, cookies_path)
-            if not langs:
-                raise RuntimeError(f"No transcripts found for video: {video_id}")
-
-            print("No English transcript found. Available languages:")
-            for i, lang in enumerate(langs, 1):
-                print(f"  {i}. {lang}")
-
-            while True:
-                choice = input("Select a language (number or code): ").strip()
-                if choice.isdigit() and 1 <= int(choice) <= len(langs):
-                    selected = langs[int(choice) - 1]
-                    break
-                if choice in langs:
-                    selected = choice
-                    break
-                print(f"Enter a number 1-{len(langs)} or a language code.")
-
-            title, subtitle_file = _fetch_subtitles(video_id, selected, cookies_path, tmpdir)
-            if not os.path.exists(subtitle_file):
-                raise RuntimeError(f"Could not fetch transcript in language '{selected}' for video: {video_id}")
+            raise RuntimeError(f"Could not fetch transcript in language '{selected}' for video: {video_id}")
 
         with open(subtitle_file) as f:
             data = json.load(f)
