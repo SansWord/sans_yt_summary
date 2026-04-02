@@ -186,25 +186,6 @@ def test_fetch_transcript_with_cookies(tmp_path):
     assert str(cookies_file) in captured_cmd
 
 
-def test_fetch_transcript_from_chrome():
-    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
-
-    captured_cmd = []
-
-    def fake_run(cmd, **kwargs):
-        captured_cmd.extend(cmd)
-        output_template = cmd[cmd.index("-o") + 1]
-        output_dir = output_template.replace("%(id)s", "abc123")
-        with open(output_dir + ".en.json3", "w") as f:
-            json.dump(fake_data, f)
-        return MagicMock(returncode=0, stderr="")
-
-    with patch("subprocess.run", side_effect=fake_run):
-        fetch_transcript("abc123", from_chrome=True)
-
-    assert "--cookies-from-browser" in captured_cmd
-    assert "chrome" in captured_cmd
-
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
@@ -253,25 +234,6 @@ def test_main_no_transcript(capsys):
     assert exc.value.code == 1
     assert "No English transcript found" in capsys.readouterr().out
 
-
-def test_main_from_chrome(capsys, tmp_path, monkeypatch):
-    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
-    monkeypatch.chdir(tmp_path)
-    captured_cmd = []
-
-    def fake_run(cmd, **kwargs):
-        captured_cmd.extend(cmd)
-        output_template = cmd[cmd.index("-o") + 1]
-        output_dir = output_template.replace("%(id)s", "abc1234")
-        with open(output_dir + ".en.json3", "w") as f:
-            json.dump(fake_data, f)
-        return MagicMock(returncode=0, stderr="")
-
-    with patch("sys.argv", ["fetch_transcript.py", "--from-chrome", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("subprocess.run", side_effect=fake_run):
-            main()
-    assert "--cookies-from-browser" in captured_cmd
-    assert "[0:00] Hello" in capsys.readouterr().out
 
 
 def test_main_with_cookies(capsys, tmp_path, monkeypatch):

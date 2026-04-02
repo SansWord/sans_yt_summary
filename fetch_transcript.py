@@ -42,7 +42,7 @@ def _parse_json3(data: dict) -> list:
     return segments
 
 
-def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, from_chrome: bool = False) -> list:
+def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> list:
     with tempfile.TemporaryDirectory() as tmpdir:
         output_template = os.path.join(tmpdir, "%(id)s")
         cmd = [
@@ -56,9 +56,7 @@ def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, from_chr
             "-o", output_template,
             f"https://www.youtube.com/watch?v={video_id}",
         ]
-        if from_chrome:
-            cmd[1:1] = ["--cookies-from-browser", "chrome"]
-        elif cookies_path is not None:
+        if cookies_path is not None:
             cmd[1:1] = ["--cookies", cookies_path]
 
         subprocess.run(cmd, capture_output=True, text=True)
@@ -89,18 +87,11 @@ def main() -> None:
         description="Fetch a timed YouTube transcript and save it to a .txt file."
     )
     parser.add_argument("url", help="YouTube video URL")
-    auth = parser.add_mutually_exclusive_group()
-    auth.add_argument(
+    parser.add_argument(
         "--cookies",
         metavar="FILE",
         default=None,
         help="Path to a Netscape-format cookies.txt file for sign-in-required videos",
-    )
-    auth.add_argument(
-        "--from-chrome",
-        action="store_true",
-        default=False,
-        help="Read YouTube cookies directly from Chrome (no file export needed)",
     )
     args = parser.parse_args()
 
@@ -111,7 +102,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        segments = fetch_transcript(video_id, cookies_path=args.cookies, from_chrome=args.from_chrome)
+        segments = fetch_transcript(video_id, cookies_path=args.cookies)
     except FileNotFoundError as e:
         print(str(e))
         sys.exit(1)
