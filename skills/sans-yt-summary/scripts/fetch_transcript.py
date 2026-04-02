@@ -245,6 +245,12 @@ def main() -> None:
     cookies_path = args.cookies
     from_browser = args.cookies is None
 
+    if from_browser:
+        if not os.path.exists(PERSISTENT_COOKIES_PATH):
+            export_cookies(PERSISTENT_COOKIES_PATH)
+        cookies_path = PERSISTENT_COOKIES_PATH
+        from_browser = False
+
     if args.list_langs:
         try:
             langs = _list_available_languages(video_id, cookies_path, from_browser)
