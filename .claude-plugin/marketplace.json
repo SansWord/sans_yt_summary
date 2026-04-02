@@ -1,0 +1,14 @@
+{
+  "name": "sans-yt-summary-marketplace",
+  "description": "Local marketplace for sans-yt-summary plugin",
+  "owner": {
+    "name": "sansword"
+  },
+  "plugins": [
+    {
+      "name": "sans-yt-summary",
+      "description": "Fetch and summarize YouTube videos using Claude",
+      "source": "."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+# Cookies (sensitive — contains session tokens)
+cookies.txt
+*.cookies.txt
+.youtube_cookies.txt
+
+# Transcript and summary outputs
+*.txt
+*_summary.md
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Claude Code local settings (contains personal paths/permissions)
+.claude/settings.local.json
+
+# Internal planning/design docs (not part of the plugin)
+docs/

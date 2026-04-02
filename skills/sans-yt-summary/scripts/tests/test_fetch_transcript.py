@@ -135,10 +135,16 @@ def test_format_segments_empty():
 # ── fetch_transcript ──────────────────────────────────────────────────────────
 
 def _make_fake_run(video_id: str, json3_data: dict, lang: str = "en"):
-    """Returns a subprocess.run mock handling both --dump-json and subtitle fetch calls."""
+    """Returns a subprocess.run mock handling export_cookies, --dump-json and subtitle fetch calls."""
     langs_json = json.dumps({"language": lang, "automatic_captions": {lang: []}, "subtitles": {}})
 
     def fake_run(cmd, **kwargs):
+        if "--cookies-from-browser" in cmd:
+            # Simulate export_cookies writing the file
+            cookies_path = cmd[cmd.index("--cookies") + 1]
+            with open(cookies_path, "w") as f:
+                f.write("# Netscape HTTP Cookie File\n")
+            return MagicMock(returncode=0, stderr="")
         if "--dump-json" in cmd:
             return MagicMock(returncode=0, stdout=langs_json, stderr="")
         output_template = cmd[cmd.index("-o") + 1]
@@ -223,19 +229,27 @@ def test_fetch_transcript_with_cookies(tmp_path):
 
 def test_export_cookies_success(tmp_path):
     output_file = str(tmp_path / "cookies.txt")
-    with patch("subprocess.run", return_value=MagicMock(returncode=0, stderr="")) as mock_run:
+
+    def fake_run(cmd, **kwargs):
+        # Simulate yt-dlp writing the cookies file
+        with open(output_file, "w") as f:
+            f.write("# Netscape HTTP Cookie File\n")
+        return MagicMock(returncode=0, stderr="")
+
+    with patch("subprocess.run", side_effect=fake_run) as mock_run:
         export_cookies(output_file)
     cmd = mock_run.call_args[0][0]
     assert "--cookies-from-browser" in cmd
     assert "chrome" in cmd
     assert "--cookies" in cmd
     assert output_file in cmd
+    assert "--no-playlist" in cmd
 
 
 def test_export_cookies_failure():
-    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="Browser not found")):
-        with pytest.raises(RuntimeError, match="Browser not found"):
-            export_cookies("/tmp/cookies.txt")
+    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="")):
+        with pytest.raises(RuntimeError, match="Failed to export cookies"):
+            export_cookies("/tmp/cookies_missing.txt")
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -250,19 +264,25 @@ def test_main_missing_argument(capsys):
 
 def test_main_export_cookies(capsys, tmp_path):
     output_file = str(tmp_path / "cookies.txt")
+
+    def fake_run(cmd, **kwargs):
+        with open(output_file, "w") as f:
+            f.write("# Netscape HTTP Cookie File\n")
+        return MagicMock(returncode=0, stderr="")
+
     with patch("sys.argv", ["fetch_transcript.py", "--export-cookies", output_file]):
-        with patch("subprocess.run", return_value=MagicMock(returncode=0, stderr="")):
+        with patch("subprocess.run", side_effect=fake_run):
             main()
     assert f"Cookies exported to {output_file}" in capsys.readouterr().out
 
 
 def test_main_export_cookies_failure(capsys):
-    with patch("sys.argv", ["fetch_transcript.py", "--export-cookies", "/tmp/cookies.txt"]):
-        with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="Browser not found")):
+    with patch("sys.argv", ["fetch_transcript.py", "--export-cookies", "/tmp/cookies_missing.txt"]):
+        with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="")):
             with pytest.raises(SystemExit) as exc:
                 main()
     assert exc.value.code == 1
-    assert "Browser not found" in capsys.readouterr().out
+    assert "Failed to export cookies" in capsys.readouterr().out
 
 
 def test_main_invalid_url(capsys):
@@ -297,7 +317,9 @@ def test_main_success(capsys, tmp_path, monkeypatch):
     assert "[0:05] World" in content
 
 
-def test_main_no_transcript(capsys):
+def test_main_no_transcript(capsys, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".youtube_cookies.txt").write_text("# Netscape HTTP Cookie File\n")
     failed = MagicMock(returncode=1, stdout="", stderr="Sign in to confirm you're not a bot.")
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
         with patch("subprocess.run", return_value=failed):

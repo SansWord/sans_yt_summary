@@ -1,4 +1,5 @@
 import glob
+import re
 import sys
 import json
 import argparse
@@ -102,49 +103,44 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None,
     return sorted(langs)
 
 
+PERSISTENT_COOKIES_PATH = ".youtube_cookies.txt"
+
+
 def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Optional[str] = None, from_browser: bool = False) -> tuple:
-    # Export browser cookies once to a temp file so all yt-dlp calls reuse it,
-    # avoiding repeated macOS Keychain prompts.
-    tmp_cookies = None
+    # Export browser cookies to a persistent file on first use, reuse on subsequent runs.
+    # Each --cookies-from-browser chrome call costs 2 macOS Keychain prompts; caching avoids this.
     if from_browser:
-        import tempfile as _tf
-        fd, tmp_cookies = _tf.mkstemp(suffix=".txt")
-        os.close(fd)
-        os.unlink(tmp_cookies)  # yt-dlp requires a non-existent path to write cookies fresh
-        export_cookies(tmp_cookies)
-        cookies_path = tmp_cookies
+        if not os.path.exists(PERSISTENT_COOKIES_PATH):
+            export_cookies(PERSISTENT_COOKIES_PATH)
+        cookies_path = PERSISTENT_COOKIES_PATH
         from_browser = False
 
-    try:
-        if lang is None:
-            langs = _list_available_languages(video_id, cookies_path, from_browser)
-            if not langs:
-                raise RuntimeError(f"No transcripts found for video: {video_id}")
+    if lang is None:
+        langs = _list_available_languages(video_id, cookies_path, from_browser)
+        if not langs:
+            raise RuntimeError(f"No transcripts found for video: {video_id}")
 
-            print("Available languages:")
-            for i, l in enumerate(langs, 1):
-                print(f"  {i}. {l}")
+        print("Available languages:")
+        for i, l in enumerate(langs, 1):
+            print(f"  {i}. {l}")
 
-            while True:
-                choice = input("Select a language (number or code): ").strip()
-                if choice.isdigit() and 1 <= int(choice) <= len(langs):
-                    lang = langs[int(choice) - 1]
-                    break
-                if choice in langs:
-                    lang = choice
-                    break
-                print(f"Enter a number 1-{len(langs)} or a language code.")
+        while True:
+            choice = input("Select a language (number or code): ").strip()
+            if choice.isdigit() and 1 <= int(choice) <= len(langs):
+                lang = langs[int(choice) - 1]
+                break
+            if choice in langs:
+                lang = choice
+                break
+            print(f"Enter a number 1-{len(langs)} or a language code.")
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir, from_browser)
-            if not os.path.exists(subtitle_file):
-                raise RuntimeError(f"Could not fetch transcript in language '{lang}' for video: {video_id}")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        title, subtitle_file = _fetch_subtitles(video_id, lang, cookies_path, tmpdir, from_browser)
+        if not os.path.exists(subtitle_file):
+            raise RuntimeError(f"Could not fetch transcript in language '{lang}' for video: {video_id}")
 
-            with open(subtitle_file) as f:
-                data = json.load(f)
-    finally:
-        if tmp_cookies and os.path.exists(tmp_cookies):
-            os.unlink(tmp_cookies)
+        with open(subtitle_file) as f:
+            data = json.load(f)
 
     return _parse_json3(data), title
 
@@ -170,20 +166,32 @@ def save_transcript(video_id: str, url: str, segments: list, title: str) -> str:
 
 
 def export_cookies(output_path: str) -> None:
-    result = subprocess.run(
+    subprocess.run(
         [
             "yt-dlp",
             "--cookies-from-browser", "chrome",
             "--cookies", output_path,
             "--skip-download",
+            "--no-playlist",
             "--quiet",
-            "https://www.youtube.com",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         ],
         capture_output=True,
         text=True,
     )
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "Failed to export cookies from Chrome")
+    if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+        raise RuntimeError("Failed to export cookies from Chrome")
+
+    # Strip cookies unrelated to YouTube/Google to reduce file size.
+    _YOUTUBE_DOMAINS = re.compile(r"\.(youtube\.com|google\.com|googlevideo\.com)$")
+    with open(output_path) as f:
+        lines = f.readlines()
+    filtered = [
+        line for line in lines
+        if line.startswith("#") or _YOUTUBE_DOMAINS.search(line.split("\t")[0])
+    ]
+    with open(output_path, "w") as f:
+        f.writelines(filtered)
 
 
 def main() -> None:
@@ -234,9 +242,12 @@ def main() -> None:
         print(str(e))
         sys.exit(1)
 
+    cookies_path = args.cookies
+    from_browser = args.cookies is None
+
     if args.list_langs:
         try:
-            langs = _list_available_languages(video_id, args.cookies)
+            langs = _list_available_languages(video_id, cookies_path, from_browser)
         except RuntimeError as e:
             print(str(e))
             sys.exit(1)
@@ -248,7 +259,7 @@ def main() -> None:
         return
 
     try:
-        segments, title = fetch_transcript(video_id, cookies_path=args.cookies, lang=args.lang)
+        segments, title = fetch_transcript(video_id, cookies_path=cookies_path, lang=args.lang, from_browser=from_browser)
     except FileNotFoundError as e:
         print(str(e))
         sys.exit(1)
