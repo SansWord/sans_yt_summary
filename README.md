@@ -89,6 +89,49 @@ Example:
 [0:07] For the requirements, users can browse available flights.
 ```
 
+## Summarization
+
+Summarize a transcript using Claude AI.
+
+### Full pipeline (recommended)
+
+Fetch and summarize in one command:
+
+```bash
+python3 pipeline.py "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# With cookies for sign-in required videos
+python3 pipeline.py --cookies cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Use a faster/cheaper model
+python3 pipeline.py --model claude-sonnet-4-6 "URL"
+
+# Use a custom prompt
+python3 pipeline.py --prompt prompts/my_prompt.md "URL"
+```
+
+Output: `<Video_Title>_summary.md` in the current directory.
+
+### Summarize only (transcript already fetched)
+
+```bash
+python3 summarize.py VIDEO_ID.txt
+python3 summarize.py VIDEO_ID.txt --model claude-sonnet-4-6
+python3 summarize.py VIDEO_ID.txt --prompt prompts/my_prompt.md
+```
+
+### Custom prompts
+
+Copy `prompts/summarize_template.md` as a starting point:
+
+```bash
+cp prompts/summarize_template.md prompts/my_prompt.md
+# Edit prompts/my_prompt.md to your liking
+python3 pipeline.py --prompt prompts/my_prompt.md "URL"
+```
+
+The summary language follows the prompt language — Traditional Chinese prompt produces a Chinese summary, English prompt produces an English summary.
+
 ## Security note
 
 `cookies.txt` contains your YouTube session tokens in plaintext. Keep it out of version control:
