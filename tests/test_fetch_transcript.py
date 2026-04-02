@@ -1,7 +1,7 @@
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from fetch_transcript import extract_video_id, _parse_json3, format_segments, fetch_transcript, export_cookies, main
+from fetch_transcript import extract_video_id, _parse_json3, format_segments, fetch_transcript, export_cookies, main, save_transcript
 
 
 # ── extract_video_id ──────────────────────────────────────────────────────────
@@ -136,16 +136,13 @@ def test_format_segments_empty():
 
 def _make_fake_run(video_id: str, json3_data: dict):
     """Returns a subprocess.run mock that writes a json3 file into the temp dir."""
-    import subprocess
-
     def fake_run(cmd, **kwargs):
         output_template = cmd[cmd.index("-o") + 1]
         output_dir = output_template.replace("%(id)s", video_id)
         subtitle_path = output_dir + ".en.json3"
         with open(subtitle_path, "w") as f:
             json.dump(json3_data, f)
-        return MagicMock(returncode=0, stderr="")
-
+        return MagicMock(returncode=0, stdout="", stderr="")
     return fake_run
 
 
@@ -154,12 +151,12 @@ def test_fetch_transcript_success():
         "events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]
     }
     with patch("subprocess.run", side_effect=_make_fake_run("abc123", fake_data)):
-        result = fetch_transcript("abc123")
-    assert result == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+        segments, title = fetch_transcript("abc123")
+    assert segments == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
 
 
 def test_fetch_transcript_no_subtitles():
-    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="")):
+    with patch("subprocess.run", return_value=MagicMock(returncode=1, stdout="", stderr="")):
         with pytest.raises(RuntimeError, match="No English transcript found"):
             fetch_transcript("abc123")
 
@@ -177,7 +174,7 @@ def test_fetch_transcript_with_cookies(tmp_path):
         output_dir = output_template.replace("%(id)s", "abc123")
         with open(output_dir + ".en.json3", "w") as f:
             json.dump(fake_data, f)
-        return MagicMock(returncode=0, stderr="")
+        return MagicMock(returncode=0, stdout="", stderr="")
 
     with patch("subprocess.run", side_effect=fake_run):
         fetch_transcript("abc123", cookies_path=str(cookies_file))
@@ -258,6 +255,8 @@ def test_main_success(capsys, tmp_path, monkeypatch):
     output_file = tmp_path / "abc1234.txt"
     assert output_file.exists()
     content = output_file.read_text()
+    assert "---\n" in content
+    assert "url: https://www.youtube.com/watch?v=abc1234\n" in content
     assert "[0:00] Hello" in content
     assert "[0:05] World" in content
 
@@ -282,3 +281,39 @@ def test_main_with_cookies(capsys, tmp_path, monkeypatch):
         with patch("subprocess.run", side_effect=_make_fake_run("abc1234", fake_data)):
             main()
     assert "[0:00] Hello" in capsys.readouterr().out
+
+
+def test_fetch_transcript_returns_title():
+    fake_data = {
+        "events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]
+    }
+
+    def fake_run(cmd, **kwargs):
+        output_template = cmd[cmd.index("-o") + 1]
+        output_dir = output_template.replace("%(id)s", "abc123")
+        import json
+        with open(output_dir + ".en.json3", "w") as f:
+            json.dump(fake_data, f)
+        return MagicMock(returncode=0, stdout="My Video Title\n", stderr="")
+
+    with patch("subprocess.run", side_effect=fake_run):
+        segments, title = fetch_transcript("abc123")
+
+    assert title == "My Video Title"
+    assert segments == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+
+
+def test_save_transcript_writes_header(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    segments = [
+        {"text": "Hello", "start": 0.0, "duration": 2.0},
+        {"text": "World", "start": 5.0, "duration": 2.0},
+    ]
+    save_transcript("abc123", "https://www.youtube.com/watch?v=abc123", segments, "My Video Title")
+
+    content = (tmp_path / "abc123.txt").read_text()
+    assert content.startswith("---\n")
+    assert "title: My Video Title\n" in content
+    assert "url: https://www.youtube.com/watch?v=abc123\n" in content
+    assert "[0:00] Hello\n" in content
+    assert "[0:05] World\n" in content

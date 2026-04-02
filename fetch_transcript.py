@@ -42,7 +42,7 @@ def _parse_json3(data: dict) -> list:
     return segments
 
 
-def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> list:
+def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> tuple:
     with tempfile.TemporaryDirectory() as tmpdir:
         output_template = os.path.join(tmpdir, "%(id)s")
         cmd = [
@@ -53,13 +53,15 @@ def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> list:
             "--sub-format", "json3",
             "--no-playlist",
             "--quiet",
+            "--print", "%(title)s",
             "-o", output_template,
             f"https://www.youtube.com/watch?v={video_id}",
         ]
         if cookies_path is not None:
             cmd[1:1] = ["--cookies", cookies_path]
 
-        subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        title = result.stdout.strip()
 
         subtitle_file = os.path.join(tmpdir, f"{video_id}.en.json3")
         if not os.path.exists(subtitle_file):
@@ -68,7 +70,7 @@ def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> list:
         with open(subtitle_file) as f:
             data = json.load(f)
 
-    return _parse_json3(data)
+    return _parse_json3(data), title
 
 
 def format_segments(segments: list) -> str:
@@ -80,6 +82,15 @@ def format_segments(segments: list) -> str:
         timestamp = f"{minutes}:{seconds:02d}"
         lines.append(f"[{timestamp}] {segment['text']}")
     return "\n".join(lines) + "\n" if lines else ""
+
+
+def save_transcript(video_id: str, url: str, segments: list, title: str) -> str:
+    formatted = format_segments(segments)
+    output_path = f"{video_id}.txt"
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(f"---\ntitle: {title}\nurl: {url}\n---\n\n")
+        f.write(formatted)
+    return output_path
 
 
 def export_cookies(output_path: str) -> None:
@@ -137,7 +148,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        segments = fetch_transcript(video_id, cookies_path=args.cookies)
+        segments, title = fetch_transcript(video_id, cookies_path=args.cookies)
     except FileNotFoundError as e:
         print(str(e))
         sys.exit(1)
@@ -149,12 +160,9 @@ def main() -> None:
         sys.exit(1)
 
     formatted = format_segments(segments)
-
     print(formatted, end="")
 
-    output_path = f"{video_id}.txt"
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(formatted)
+    output_path = save_transcript(video_id, args.url, segments, title)
     print(f"\nTranscript saved to {output_path}")
 
 
