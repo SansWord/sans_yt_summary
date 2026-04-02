@@ -1,5 +1,9 @@
 import sys
+import argparse
+import http.cookiejar
 import urllib.parse
+from typing import Optional
+import requests
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
 
@@ -21,8 +25,20 @@ def extract_video_id(url: str) -> str:
     raise ValueError(f"Could not extract video ID from URL: {url!r}")
 
 
-def fetch_transcript(video_id: str) -> list:
-    api = YouTubeTranscriptApi()
+def build_api(cookies_path: Optional[str]) -> YouTubeTranscriptApi:
+    if cookies_path is None:
+        return YouTubeTranscriptApi()
+    jar = http.cookiejar.MozillaCookieJar(cookies_path)
+    jar.load(ignore_discard=True, ignore_expires=True)
+    session = requests.Session()
+    session.cookies = requests.utils.cookiejar_from_dict(
+        {c.name: c.value for c in jar}
+    )
+    return YouTubeTranscriptApi(http_client=session)
+
+
+def fetch_transcript(video_id: str, cookies_path: Optional[str] = None) -> list:
+    api = build_api(cookies_path)
     return api.fetch(video_id).to_raw_data()
 
 
@@ -38,20 +54,29 @@ def format_segments(segments: list) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: python fetch_transcript.py <youtube_url>")
-        sys.exit(1)
-
-    url = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description="Fetch a timed YouTube transcript and save it to a .txt file."
+    )
+    parser.add_argument("url", help="YouTube video URL")
+    parser.add_argument(
+        "--cookies",
+        metavar="FILE",
+        default=None,
+        help="Path to a Netscape-format cookies.txt file for sign-in-required videos",
+    )
+    args = parser.parse_args()
 
     try:
-        video_id = extract_video_id(url)
+        video_id = extract_video_id(args.url)
     except ValueError as e:
         print(str(e))
         sys.exit(1)
 
     try:
-        segments = fetch_transcript(video_id)
+        segments = fetch_transcript(video_id, cookies_path=args.cookies)
+    except FileNotFoundError:
+        print(f"Cookies file not found: {args.cookies}")
+        sys.exit(1)
     except (TranscriptsDisabled, NoTranscriptFound):
         print(f"Transcript not available for video: {video_id}")
         sys.exit(1)

@@ -1,7 +1,7 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from youtube_transcript_api import TranscriptsDisabled, NoTranscriptFound
-from fetch_transcript import extract_video_id, format_segments, fetch_transcript, main
+from fetch_transcript import extract_video_id, format_segments, fetch_transcript, build_api, main
 
 
 def test_extract_video_id_watch_url():
@@ -80,6 +80,29 @@ def test_format_segments_truncates_not_rounds():
     assert result == "[2:05] x\n"
 
 
+def test_build_api_no_cookies():
+    api = build_api(None)
+    from youtube_transcript_api import YouTubeTranscriptApi
+    assert isinstance(api, YouTubeTranscriptApi)
+
+
+def test_build_api_with_cookies(tmp_path):
+    # Minimal valid Netscape cookies.txt
+    cookies_file = tmp_path / "cookies.txt"
+    cookies_file.write_text(
+        "# Netscape HTTP Cookie File\n"
+        ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\ttest_value\n"
+    )
+    api = build_api(str(cookies_file))
+    from youtube_transcript_api import YouTubeTranscriptApi
+    assert isinstance(api, YouTubeTranscriptApi)
+
+
+def test_build_api_missing_cookies_file():
+    with pytest.raises(FileNotFoundError):
+        build_api("/nonexistent/cookies.txt")
+
+
 def test_fetch_transcript_success():
     fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
     mock_transcript = MagicMock()
@@ -108,9 +131,9 @@ def test_main_missing_argument(capsys):
     with patch("sys.argv", ["fetch_transcript.py"]):
         with pytest.raises(SystemExit) as exc:
             main()
-    assert exc.value.code == 1
+    assert exc.value.code == 2  # argparse exits with 2 for missing required args
     captured = capsys.readouterr()
-    assert "Usage:" in captured.out
+    assert "url" in captured.err
 
 
 def test_main_invalid_url(capsys):
@@ -175,3 +198,38 @@ def test_main_network_error(capsys):
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Error fetching transcript" in captured.out
+
+
+def test_main_with_cookies(capsys, tmp_path, monkeypatch):
+    cookies_file = tmp_path / "cookies.txt"
+    cookies_file.write_text(
+        "# Netscape HTTP Cookie File\n"
+        ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\ttest_value\n"
+    )
+    fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
+    mock_transcript = MagicMock()
+    mock_transcript.to_raw_data.return_value = fake_segments
+    monkeypatch.chdir(tmp_path)
+    with patch("sys.argv", [
+        "fetch_transcript.py",
+        "--cookies", str(cookies_file),
+        "https://www.youtube.com/watch?v=abc1234",
+    ]):
+        with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
+            main()
+    captured = capsys.readouterr()
+    assert "[0:00] Hello" in captured.out
+    assert (tmp_path / "abc1234.txt").exists()
+
+
+def test_main_cookies_file_not_found(capsys):
+    with patch("sys.argv", [
+        "fetch_transcript.py",
+        "--cookies", "/nonexistent/cookies.txt",
+        "https://www.youtube.com/watch?v=abc1234",
+    ]):
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Cookies file not found" in captured.out
