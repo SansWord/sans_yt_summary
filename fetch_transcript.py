@@ -110,6 +110,7 @@ def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Op
         import tempfile as _tf
         fd, tmp_cookies = _tf.mkstemp(suffix=".txt")
         os.close(fd)
+        os.unlink(tmp_cookies)  # yt-dlp requires a non-existent path to write cookies fresh
         export_cookies(tmp_cookies)
         cookies_path = tmp_cookies
         from_browser = False
