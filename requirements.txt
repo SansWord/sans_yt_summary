@@ -1,3 +1,2 @@
-youtube-transcript-api
-rookiepy
+yt-dlp
 pytest

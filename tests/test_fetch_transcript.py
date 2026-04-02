@@ -1,22 +1,29 @@
+import json
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
-from youtube_transcript_api import TranscriptsDisabled, NoTranscriptFound
-from fetch_transcript import extract_video_id, format_segments, fetch_transcript, build_api, main
+from unittest.mock import patch, MagicMock
+from fetch_transcript import extract_video_id, _parse_json3, format_segments, fetch_transcript, main
 
+
+# ── extract_video_id ──────────────────────────────────────────────────────────
 
 def test_extract_video_id_watch_url():
-    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    assert extract_video_id(url) == "dQw4w9WgXcQ"
+    assert extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ") == "dQw4w9WgXcQ"
 
 
 def test_extract_video_id_short_url():
-    url = "https://youtu.be/dQw4w9WgXcQ"
-    assert extract_video_id(url) == "dQw4w9WgXcQ"
+    assert extract_video_id("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
 
 
 def test_extract_video_id_with_extra_params():
-    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s"
-    assert extract_video_id(url) == "dQw4w9WgXcQ"
+    assert extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s") == "dQw4w9WgXcQ"
+
+
+def test_extract_video_id_short_url_with_query_params():
+    assert extract_video_id("https://youtu.be/dQw4w9WgXcQ?si=abc123&t=10") == "dQw4w9WgXcQ"
+
+
+def test_extract_video_id_live_url():
+    assert extract_video_id("https://www.youtube.com/live/ckkbxPE-5wc?si=abc") == "ckkbxPE-5wc"
 
 
 def test_extract_video_id_invalid_url():
@@ -29,19 +36,9 @@ def test_extract_video_id_empty_string():
         extract_video_id("")
 
 
-def test_extract_video_id_short_url_with_query_params():
-    url = "https://youtu.be/dQw4w9WgXcQ?si=abc123&t=10"
-    assert extract_video_id(url) == "dQw4w9WgXcQ"
-
-
 def test_extract_video_id_short_url_empty_path():
     with pytest.raises(ValueError, match="Could not extract video ID"):
         extract_video_id("https://youtu.be/")
-
-
-def test_extract_video_id_live_url():
-    url = "https://www.youtube.com/live/ckkbxPE-5wc?si=2JIkBVtwXGMb3dRd"
-    assert extract_video_id(url) == "ckkbxPE-5wc"
 
 
 def test_extract_video_id_watch_url_missing_v_param():
@@ -49,98 +46,174 @@ def test_extract_video_id_watch_url_missing_v_param():
         extract_video_id("https://www.youtube.com/watch")
 
 
+# ── _parse_json3 ──────────────────────────────────────────────────────────────
+
+def test_parse_json3_basic():
+    data = {
+        "events": [
+            {"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello world"}]},
+            {"tStartMs": 65000, "dDurationMs": 3000, "segs": [{"utf8": "This is a test"}]},
+        ]
+    }
+    result = _parse_json3(data)
+    assert result == [
+        {"text": "Hello world", "start": 0.0, "duration": 2.0},
+        {"text": "This is a test", "start": 65.0, "duration": 3.0},
+    ]
+
+
+def test_parse_json3_skips_events_without_segs():
+    data = {
+        "events": [
+            {"tStartMs": 0, "id": 1, "wpWinPosId": 1},  # layout event, no segs
+            {"tStartMs": 1000, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]},
+        ]
+    }
+    result = _parse_json3(data)
+    assert len(result) == 1
+    assert result[0]["text"] == "Hello"
+
+
+def test_parse_json3_skips_empty_text():
+    data = {
+        "events": [
+            {"tStartMs": 0, "dDurationMs": 1000, "segs": [{"utf8": "\n"}]},
+            {"tStartMs": 1000, "dDurationMs": 2000, "segs": [{"utf8": "Real text"}]},
+        ]
+    }
+    result = _parse_json3(data)
+    assert len(result) == 1
+    assert result[0]["text"] == "Real text"
+
+
+def test_parse_json3_joins_multiple_segs():
+    data = {
+        "events": [
+            {"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello "}, {"utf8": "world"}]},
+        ]
+    }
+    result = _parse_json3(data)
+    assert result[0]["text"] == "Hello world"
+
+
+def test_parse_json3_empty_events():
+    assert _parse_json3({"events": []}) == []
+
+
+def test_parse_json3_missing_duration():
+    data = {"events": [{"tStartMs": 5900, "segs": [{"utf8": "Quick start"}]}]}
+    result = _parse_json3(data)
+    assert result[0] == {"text": "Quick start", "start": 5.9, "duration": 0.0}
+
+
+# ── format_segments ───────────────────────────────────────────────────────────
+
 def test_format_segments_basic():
     segments = [
         {"text": "Hello world", "start": 0.0, "duration": 2.5},
         {"text": "This is a test", "start": 65.0, "duration": 3.0},
     ]
-    result = format_segments(segments)
-    assert result == "[0:00] Hello world\n[1:05] This is a test\n"
+    assert format_segments(segments) == "[0:00] Hello world\n[1:05] This is a test\n"
 
 
 def test_format_segments_exact_minute():
-    segments = [{"text": "On the minute", "start": 120.0, "duration": 1.0}]
-    result = format_segments(segments)
-    assert result == "[2:00] On the minute\n"
+    assert format_segments([{"text": "On the minute", "start": 120.0, "duration": 1.0}]) == "[2:00] On the minute\n"
 
 
 def test_format_segments_sub_ten_seconds():
-    segments = [{"text": "Quick start", "start": 5.9, "duration": 1.0}]
-    result = format_segments(segments)
-    assert result == "[0:05] Quick start\n"
+    assert format_segments([{"text": "Quick start", "start": 5.9, "duration": 1.0}]) == "[0:05] Quick start\n"
+
+
+def test_format_segments_truncates_not_rounds():
+    assert format_segments([{"text": "x", "start": 125.4, "duration": 1.0}]) == "[2:05] x\n"
 
 
 def test_format_segments_empty():
     assert format_segments([]) == ""
 
 
-def test_format_segments_truncates_not_rounds():
-    segments = [{"text": "x", "start": 125.4, "duration": 1.0}]
-    result = format_segments(segments)
-    assert result == "[2:05] x\n"
+# ── fetch_transcript ──────────────────────────────────────────────────────────
 
+def _make_fake_run(video_id: str, json3_data: dict):
+    """Returns a subprocess.run mock that writes a json3 file into the temp dir."""
+    import subprocess
 
-def test_build_api_no_cookies():
-    api = build_api()
-    from youtube_transcript_api import YouTubeTranscriptApi
-    assert isinstance(api, YouTubeTranscriptApi)
+    def fake_run(cmd, **kwargs):
+        output_template = cmd[cmd.index("-o") + 1]
+        output_dir = output_template.replace("%(id)s", video_id)
+        subtitle_path = output_dir + ".en.json3"
+        with open(subtitle_path, "w") as f:
+            json.dump(json3_data, f)
+        return MagicMock(returncode=0, stderr="")
 
-
-def test_build_api_with_cookies(tmp_path):
-    cookies_file = tmp_path / "cookies.txt"
-    cookies_file.write_text(
-        "# Netscape HTTP Cookie File\n"
-        ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\ttest_value\n"
-    )
-    api = build_api(cookies_path=str(cookies_file))
-    from youtube_transcript_api import YouTubeTranscriptApi
-    assert isinstance(api, YouTubeTranscriptApi)
-
-
-def test_build_api_from_chrome():
-    fake_cookies = [{"name": "SID", "value": "abc", "domain": ".youtube.com"}]
-    with patch("rookiepy.chrome", return_value=fake_cookies):
-        api = build_api(from_chrome=True)
-    from youtube_transcript_api import YouTubeTranscriptApi
-    assert isinstance(api, YouTubeTranscriptApi)
-
-
-def test_build_api_missing_cookies_file():
-    with pytest.raises(FileNotFoundError):
-        build_api(cookies_path="/nonexistent/cookies.txt")
+    return fake_run
 
 
 def test_fetch_transcript_success():
-    fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
-    mock_transcript = MagicMock()
-    mock_transcript.to_raw_data.return_value = fake_segments
-    with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
-        result = fetch_transcript("dQw4w9WgXcQ")
-    assert result == fake_segments
+    fake_data = {
+        "events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]
+    }
+    with patch("subprocess.run", side_effect=_make_fake_run("abc123", fake_data)):
+        result = fetch_transcript("abc123")
+    assert result == [{"text": "Hello", "start": 0.0, "duration": 2.0}]
 
 
-def test_fetch_transcript_disabled():
-    with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
-               side_effect=TranscriptsDisabled("dQw4w9WgXcQ")):
-        with pytest.raises(TranscriptsDisabled):
-            fetch_transcript("dQw4w9WgXcQ")
+def test_fetch_transcript_no_subtitles():
+    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="")):
+        with pytest.raises(RuntimeError, match="No English transcript found"):
+            fetch_transcript("abc123")
 
 
-def test_fetch_transcript_not_found():
-    mock_transcript_list = MagicMock()
-    with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
-               side_effect=NoTranscriptFound("dQw4w9WgXcQ", [], mock_transcript_list)):
-        with pytest.raises(NoTranscriptFound):
-            fetch_transcript("dQw4w9WgXcQ")
+def test_fetch_transcript_with_cookies(tmp_path):
+    cookies_file = tmp_path / "cookies.txt"
+    cookies_file.write_text("# Netscape HTTP Cookie File\n")
+    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
 
+    captured_cmd = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd.extend(cmd)
+        output_template = cmd[cmd.index("-o") + 1]
+        output_dir = output_template.replace("%(id)s", "abc123")
+        with open(output_dir + ".en.json3", "w") as f:
+            json.dump(fake_data, f)
+        return MagicMock(returncode=0, stderr="")
+
+    with patch("subprocess.run", side_effect=fake_run):
+        fetch_transcript("abc123", cookies_path=str(cookies_file))
+
+    assert "--cookies" in captured_cmd
+    assert str(cookies_file) in captured_cmd
+
+
+def test_fetch_transcript_from_chrome():
+    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
+
+    captured_cmd = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd.extend(cmd)
+        output_template = cmd[cmd.index("-o") + 1]
+        output_dir = output_template.replace("%(id)s", "abc123")
+        with open(output_dir + ".en.json3", "w") as f:
+            json.dump(fake_data, f)
+        return MagicMock(returncode=0, stderr="")
+
+    with patch("subprocess.run", side_effect=fake_run):
+        fetch_transcript("abc123", from_chrome=True)
+
+    assert "--cookies-from-browser" in captured_cmd
+    assert "chrome" in captured_cmd
+
+
+# ── main ──────────────────────────────────────────────────────────────────────
 
 def test_main_missing_argument(capsys):
     with patch("sys.argv", ["fetch_transcript.py"]):
         with pytest.raises(SystemExit) as exc:
             main()
     assert exc.value.code == 2  # argparse exits with 2 for missing required args
-    captured = capsys.readouterr()
-    assert "url" in captured.err
+    assert "url" in capsys.readouterr().err
 
 
 def test_main_invalid_url(capsys):
@@ -148,20 +221,19 @@ def test_main_invalid_url(capsys):
         with pytest.raises(SystemExit) as exc:
             main()
     assert exc.value.code == 1
-    captured = capsys.readouterr()
-    assert "Could not extract video ID" in captured.out
+    assert "Could not extract video ID" in capsys.readouterr().out
 
 
 def test_main_success(capsys, tmp_path, monkeypatch):
-    fake_segments = [
-        {"text": "Hello", "start": 0.0, "duration": 2.0},
-        {"text": "World", "start": 5.0, "duration": 2.0},
-    ]
-    mock_transcript = MagicMock()
-    mock_transcript.to_raw_data.return_value = fake_segments
+    fake_data = {
+        "events": [
+            {"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]},
+            {"tStartMs": 5000, "dDurationMs": 2000, "segs": [{"utf8": "World"}]},
+        ]
+    }
     monkeypatch.chdir(tmp_path)
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
+        with patch("subprocess.run", side_effect=_make_fake_run("abc1234", fake_data)):
             main()
     captured = capsys.readouterr()
     assert "[0:00] Hello" in captured.out
@@ -173,85 +245,42 @@ def test_main_success(capsys, tmp_path, monkeypatch):
     assert "[0:05] World" in content
 
 
-def test_main_transcript_unavailable(capsys):
+def test_main_no_transcript(capsys):
     with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
-                   side_effect=TranscriptsDisabled("abc1234")):
+        with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="")):
             with pytest.raises(SystemExit) as exc:
                 main()
     assert exc.value.code == 1
-    captured = capsys.readouterr()
-    assert "Transcript not available" in captured.out
+    assert "No English transcript found" in capsys.readouterr().out
 
 
-def test_main_no_transcript_found(capsys):
-    mock_transcript_list = MagicMock()
-    with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
-                   side_effect=NoTranscriptFound("abc1234", [], mock_transcript_list)):
-            with pytest.raises(SystemExit) as exc:
-                main()
-    assert exc.value.code == 1
-    captured = capsys.readouterr()
-    assert "Transcript not available" in captured.out
+def test_main_from_chrome(capsys, tmp_path, monkeypatch):
+    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
+    monkeypatch.chdir(tmp_path)
+    captured_cmd = []
 
+    def fake_run(cmd, **kwargs):
+        captured_cmd.extend(cmd)
+        output_template = cmd[cmd.index("-o") + 1]
+        output_dir = output_template.replace("%(id)s", "abc1234")
+        with open(output_dir + ".en.json3", "w") as f:
+            json.dump(fake_data, f)
+        return MagicMock(returncode=0, stderr="")
 
-def test_main_network_error(capsys):
-    with patch("sys.argv", ["fetch_transcript.py", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("fetch_transcript.YouTubeTranscriptApi.fetch",
-                   side_effect=Exception("Connection timeout")):
-            with pytest.raises(SystemExit) as exc:
-                main()
-    assert exc.value.code == 1
-    captured = capsys.readouterr()
-    assert "Error fetching transcript" in captured.out
+    with patch("sys.argv", ["fetch_transcript.py", "--from-chrome", "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("subprocess.run", side_effect=fake_run):
+            main()
+    assert "--cookies-from-browser" in captured_cmd
+    assert "[0:00] Hello" in capsys.readouterr().out
 
 
 def test_main_with_cookies(capsys, tmp_path, monkeypatch):
     cookies_file = tmp_path / "cookies.txt"
-    cookies_file.write_text(
-        "# Netscape HTTP Cookie File\n"
-        ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\ttest_value\n"
-    )
-    fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
-    mock_transcript = MagicMock()
-    mock_transcript.to_raw_data.return_value = fake_segments
+    cookies_file.write_text("# Netscape HTTP Cookie File\n")
+    fake_data = {"events": [{"tStartMs": 0, "dDurationMs": 2000, "segs": [{"utf8": "Hello"}]}]}
     monkeypatch.chdir(tmp_path)
-    with patch("sys.argv", [
-        "fetch_transcript.py",
-        "--cookies", str(cookies_file),
-        "https://www.youtube.com/watch?v=abc1234",
-    ]):
-        with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
+
+    with patch("sys.argv", ["fetch_transcript.py", "--cookies", str(cookies_file), "https://www.youtube.com/watch?v=abc1234"]):
+        with patch("subprocess.run", side_effect=_make_fake_run("abc1234", fake_data)):
             main()
-    captured = capsys.readouterr()
-    assert "[0:00] Hello" in captured.out
-    assert (tmp_path / "abc1234.txt").exists()
-
-
-def test_main_from_chrome(capsys, tmp_path, monkeypatch):
-    fake_cookies = [{"name": "SID", "value": "abc", "domain": ".youtube.com"}]
-    fake_segments = [{"text": "Hello", "start": 0.0, "duration": 2.0}]
-    mock_transcript = MagicMock()
-    mock_transcript.to_raw_data.return_value = fake_segments
-    monkeypatch.chdir(tmp_path)
-    with patch("sys.argv", ["fetch_transcript.py", "--from-chrome", "https://www.youtube.com/watch?v=abc1234"]):
-        with patch("rookiepy.chrome", return_value=fake_cookies):
-            with patch("fetch_transcript.YouTubeTranscriptApi.fetch", return_value=mock_transcript):
-                main()
-    captured = capsys.readouterr()
-    assert "[0:00] Hello" in captured.out
-    assert (tmp_path / "abc1234.txt").exists()
-
-
-def test_main_cookies_file_not_found(capsys):
-    with patch("sys.argv", [
-        "fetch_transcript.py",
-        "--cookies", "/nonexistent/cookies.txt",
-        "https://www.youtube.com/watch?v=abc1234",
-    ]):
-        with pytest.raises(SystemExit) as exc:
-            main()
-    assert exc.value.code == 1
-    captured = capsys.readouterr()
-    assert "Cookies file not found" in captured.out
+    assert "[0:00] Hello" in capsys.readouterr().out

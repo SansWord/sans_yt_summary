@@ -1,10 +1,11 @@
 import sys
+import json
 import argparse
-import http.cookiejar
+import subprocess
+import tempfile
+import os
 import urllib.parse
 from typing import Optional
-import requests
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
 
 def extract_video_id(url: str) -> str:
@@ -25,28 +26,51 @@ def extract_video_id(url: str) -> str:
     raise ValueError(f"Could not extract video ID from URL: {url!r}")
 
 
-def build_api(cookies_path: Optional[str] = None, from_chrome: bool = False) -> YouTubeTranscriptApi:
-    if from_chrome:
-        import rookiepy
-        cookies = rookiepy.chrome(domains=[".youtube.com"])
-        session = requests.Session()
-        for c in cookies:
-            session.cookies.set(c["name"], c["value"], domain=c["domain"])
-        return YouTubeTranscriptApi(http_client=session)
-    if cookies_path is not None:
-        jar = http.cookiejar.MozillaCookieJar(cookies_path)
-        jar.load(ignore_discard=True, ignore_expires=True)
-        session = requests.Session()
-        session.cookies = requests.utils.cookiejar_from_dict(
-            {c.name: c.value for c in jar}
-        )
-        return YouTubeTranscriptApi(http_client=session)
-    return YouTubeTranscriptApi()
+def _parse_json3(data: dict) -> list:
+    segments = []
+    for event in data.get("events", []):
+        if "segs" not in event:
+            continue
+        text = "".join(s.get("utf8", "") for s in event["segs"]).strip()
+        if not text:
+            continue
+        segments.append({
+            "text": text,
+            "start": event["tStartMs"] / 1000,
+            "duration": event.get("dDurationMs", 0) / 1000,
+        })
+    return segments
 
 
 def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, from_chrome: bool = False) -> list:
-    api = build_api(cookies_path=cookies_path, from_chrome=from_chrome)
-    return api.fetch(video_id).to_raw_data()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_template = os.path.join(tmpdir, "%(id)s")
+        cmd = [
+            "yt-dlp",
+            "--write-auto-subs",
+            "--skip-download",
+            "--sub-lang", "en",
+            "--sub-format", "json3",
+            "--no-playlist",
+            "--quiet",
+            "-o", output_template,
+            f"https://www.youtube.com/watch?v={video_id}",
+        ]
+        if from_chrome:
+            cmd[1:1] = ["--cookies-from-browser", "chrome"]
+        elif cookies_path is not None:
+            cmd[1:1] = ["--cookies", cookies_path]
+
+        subprocess.run(cmd, capture_output=True, text=True)
+
+        subtitle_file = os.path.join(tmpdir, f"{video_id}.en.json3")
+        if not os.path.exists(subtitle_file):
+            raise RuntimeError(f"No English transcript found for video: {video_id}")
+
+        with open(subtitle_file) as f:
+            data = json.load(f)
+
+    return _parse_json3(data)
 
 
 def format_segments(segments: list) -> str:
@@ -88,11 +112,11 @@ def main() -> None:
 
     try:
         segments = fetch_transcript(video_id, cookies_path=args.cookies, from_chrome=args.from_chrome)
-    except FileNotFoundError:
-        print(f"Cookies file not found: {args.cookies}")
+    except FileNotFoundError as e:
+        print(str(e))
         sys.exit(1)
-    except (TranscriptsDisabled, NoTranscriptFound):
-        print(f"Transcript not available for video: {video_id}")
+    except RuntimeError as e:
+        print(str(e))
         sys.exit(1)
     except Exception as e:
         print(f"Error fetching transcript: {e}")
