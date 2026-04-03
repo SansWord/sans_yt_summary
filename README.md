@@ -1,6 +1,6 @@
 # sans-yt-summary
 
-[Built by SansWord](https://www.linkedin.com/in/sansword/) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sansword/)
+[Built by SansWord](https://www.linkedin.com/in/sansword/) [![LinkedIn](https://img.shields.io/badge/--%230A66C2?logo=linkedin&logoColor=white&style=flat)](https://www.linkedin.com/in/sansword/)
 
 **TL;DR** — Paste a YouTube URL and get a structured summary saved to your project. Can also fetch transcripts on their own, or summarize a transcript file you already have.
 
