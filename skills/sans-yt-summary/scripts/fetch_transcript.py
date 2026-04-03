@@ -72,6 +72,8 @@ def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpd
     ]
     cmd[1:1] = _auth_flags(cookies_path, from_browser)
     result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"yt-dlp failed fetching subtitles for {video_id}")
     title = result.stdout.strip()
     matches = glob.glob(os.path.join(tmpdir, f"{video_id}.*.json3"))
     subtitle_file = matches[0] if matches else os.path.join(tmpdir, f"{video_id}.{lang}.json3")
@@ -105,6 +107,30 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None,
 
 
 PERSISTENT_COOKIES_PATH = ".youtube_cookies.txt"
+
+_COOKIE_ERROR_PATTERNS = [
+    "sign in",
+    "confirm you're not a bot",
+    "bot detection",
+    "http error 401",
+    "http error 403",
+]
+
+
+def _is_cookie_error(text: str) -> bool:
+    lower = text.lower()
+    return any(pattern in lower for pattern in _COOKIE_ERROR_PATTERNS)
+
+
+def _refresh_cookies() -> str:
+    print(
+        "\nYouTube cookies have expired. Re-fetching from Chrome — "
+        "you will see a macOS system password prompt."
+    )
+    if os.path.exists(PERSISTENT_COOKIES_PATH):
+        os.remove(PERSISTENT_COOKIES_PATH)
+    export_cookies(PERSISTENT_COOKIES_PATH)
+    return PERSISTENT_COOKIES_PATH
 
 
 def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Optional[str] = None, from_browser: bool = False) -> tuple:
@@ -261,8 +287,16 @@ def main() -> None:
         try:
             langs, detected = _list_available_languages(video_id, cookies_path, from_browser)
         except RuntimeError as e:
-            print(str(e))
-            sys.exit(1)
+            if _is_cookie_error(str(e)):
+                cookies_path = _refresh_cookies()
+                try:
+                    langs, detected = _list_available_languages(video_id, cookies_path)
+                except RuntimeError as e2:
+                    print(str(e2))
+                    sys.exit(1)
+            else:
+                print(str(e))
+                sys.exit(1)
         if not langs:
             print("No transcripts found.")
             sys.exit(1)
@@ -278,8 +312,16 @@ def main() -> None:
         print(str(e))
         sys.exit(1)
     except RuntimeError as e:
-        print(str(e))
-        sys.exit(1)
+        if _is_cookie_error(str(e)):
+            cookies_path = _refresh_cookies()
+            try:
+                segments, title = fetch_transcript(video_id, cookies_path=cookies_path, lang=args.lang)
+            except RuntimeError as e2:
+                print(str(e2))
+                sys.exit(1)
+        else:
+            print(str(e))
+            sys.exit(1)
     except Exception as e:
         print(f"Error fetching transcript: {e}")
         sys.exit(1)
