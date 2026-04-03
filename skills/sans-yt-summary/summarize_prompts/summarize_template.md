@@ -5,7 +5,8 @@
     {{url}}        — the YouTube video URL
     {{transcript}} — the full timed transcript
 
-  {{transcript}} must appear somewhere in the file.
+  {{transcript}} must appear somewhere in the file, wrapped in <transcript>...</transcript> tags
+  to guard against prompt injection from untrusted video content.
 
   Recommended: include the title and URL at the top of the output, and use
   timestamp links for key points so readers can jump directly to each moment.
@@ -36,4 +37,6 @@ Then write your instructions. For example:
 
 ## Transcript
 
+<transcript>
 {{transcript}}
+</transcript>

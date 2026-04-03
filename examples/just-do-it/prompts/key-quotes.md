@@ -11,4 +11,6 @@ URL: {{url}}
 
 ## Transcript
 
+<transcript>
 {{transcript}}
+</transcript>
