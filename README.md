@@ -133,3 +133,7 @@ https://youtu.be/VIDEO_ID
 
 `.youtube_cookies.txt` contains your YouTube session tokens in plaintext. The `.gitignore` in this repo excludes it by default. Never commit this file.
 
+## Disclaimer
+
+This tool is intended for personal productivity use. Users are responsible for ensuring their use complies with [YouTube's Terms of Service](https://www.youtube.com/t/terms). The author makes no warranties and accepts no liability for misuse.
+
