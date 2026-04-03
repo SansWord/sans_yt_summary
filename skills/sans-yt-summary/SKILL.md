@@ -1,6 +1,6 @@
 ---
 name: sans-yt-summary
-description: Use this skill when the user wants to summarize a YouTube video, fetch a YouTube transcript, or shares a YouTube URL and asks for a summary or overview.
+description: Use this skill when the user wants to summarize a YouTube video, fetch a YouTube transcript, shares a YouTube URL and asks for a summary or overview, or wants to customize the summary prompt.
 version: 1.0.0
 ---
 
@@ -67,4 +67,17 @@ Write the summary to a `.md` file in the current directory. Use the video title 
 
 If the file already exists, overwrite it.
 
-Do not print the summary in the conversation. Just tell the user the filename it was saved to, and whether it was created or updated.
+Do not print the summary in the conversation. Tell the user the filename it was saved to, and whether it was created or updated.
+
+If the default prompt was used (no local `summarize_prompts/summarize.md`), add this hint:
+
+> "Tip: you can customize how summaries are generated — just say 'I want to customize the summary prompt'."
+
+## Customizing the summary prompt
+
+If the user asks to customize the summary prompt (e.g. "I want to customize the summary prompt", "change the prompt", "edit the summarize prompt"):
+
+1. Copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` in the current directory (create the directory if needed).
+2. Copy `<base_dir>/summarize_prompts/summarize_template.md` to `summarize_prompts/summarize_template.md` in the current directory.
+3. If `summarize_prompts/.skip-setup` exists, delete it.
+4. Show the user the contents of `summarize_prompts/summarize.md` and say: "Edit `summarize_prompts/summarize.md` to change how summaries are generated. `summarize_template.md` is included as a reference. Let me know when you're done and I'll use your prompt on the next summary."
