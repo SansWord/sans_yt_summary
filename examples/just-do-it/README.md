@@ -14,6 +14,7 @@ This example uses the same short video to show how different `summarize.md` prom
 | [key-quotes.md](./prompts/key-quotes.md) | Extract notable quotes with timestamps | Speeches, interviews | [view](./outputs/key-quotes.md) |
 | [action-items.md](./prompts/action-items.md) | Distill into actionable takeaways only | Productivity, learning | [view](./outputs/action-items.md) |
 | [tweet.md](./prompts/tweet.md) | Compress into a tweet thread | Sharing, social media | [view](./outputs/tweet.md) |
+| [summarize_system_design_zh.md](./prompts/summarize_system_design_zh.md) | System design analysis in Traditional Chinese | Tech interviews — ⚠️ this video is clearly not a system design video | [view](./outputs/summarize_system_design_zh.md) |
 
 ## How to try it
 
