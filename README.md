@@ -93,6 +93,10 @@ cp ~/.claude/plugins/sans-yt-summary/summarize_prompts/summarize_template.md sum
 
 The summary language follows your prompt language — write the prompt in French to get a French summary.
 
+## Examples
+
+The [`examples/`](./examples/) folder contains ready-to-use prompt variations with sample outputs on the same video — a good starting point for building your own custom prompt.
+
 ## Running tests
 
 ```bash
