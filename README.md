@@ -99,6 +99,14 @@ cp ~/.claude/plugins/sans-yt-summary/summarize_prompts/summarize_template.md sum
 
 The summary language follows your prompt language — write the prompt in French to get a French summary.
 
+You can also use any `.md` file as a one-off prompt without changing your default:
+
+```
+Use tweet.md to summarize https://www.youtube.com/watch?v=VIDEO_ID
+```
+
+The skill looks for the file in `summarize_prompts/`, then the project root, then the plugin's built-in prompts.
+
 ## Examples
 
 The [`examples/`](./examples/) folder contains ready-to-use prompt variations with sample outputs on the same video — a good starting point for building your own custom prompt.
