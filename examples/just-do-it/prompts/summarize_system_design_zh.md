@@ -13,6 +13,4 @@
 
 ## 逐字稿內容
 
-<transcript>
 {{transcript}}
-</transcript>

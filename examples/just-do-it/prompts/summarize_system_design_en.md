@@ -14,6 +14,4 @@ Please perform the following:
 
 ## Transcript
 
-<transcript>
 {{transcript}}
-</transcript>

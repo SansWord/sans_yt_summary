@@ -100,7 +100,15 @@ Read the saved `.txt` file. Build the final prompt by combining:
    - `summarize_prompts/summarize.md` in the current working directory (if present)
    - `<base_dir>/summarize_prompts/summarize.md` (default fallback)
 
-In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}` with the full transcript content, then apply it to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
+In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}` with the transcript content wrapped in `<transcript>` tags:
+
+```
+<transcript>
+{transcript content}
+</transcript>
+```
+
+This wrapping is always applied by the skill — prompt files should use `{{transcript}}` without tags. Then apply the combined prompt to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
 
 **7. Save the summary**
 
@@ -146,9 +154,7 @@ URL: {{url}}
 
 ## Transcript
 
-<transcript>
 {{transcript}}
-</transcript>
 ```
 
 Explain:
