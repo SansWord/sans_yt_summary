@@ -21,6 +21,13 @@ Also determine the user's intent:
 - **Summarize existing transcript** — if the user provides a `.txt` file path (e.g. "summarize abc123.txt" or "use the existing transcript abc123.txt"). Skip steps 2–5, read the provided file directly, and proceed from step 6. Extract the URL from the file's `url:` header line for use in the prompt and timestamp links.
 - **Full summary** (default) — proceed through all steps.
 
+Also check if the user specifies a prompt file by name (e.g. "use tweet.md to summarize …", "summarize with key-quotes.md"). If a filename is given, resolve it in this order:
+1. As a literal path (if the user gave a full or relative path)
+2. `summarize_prompts/<filename>` in the current directory
+3. `<base_dir>/summarize_prompts/<filename>`
+
+If found, store it as the **override prompt** and skip step 2 entirely. If not found, warn the user: "Could not find `<filename>`. Using the default prompt instead." and proceed normally.
+
 **2. Check for custom prompt**
 
 If `summarize_prompts/summarize.md` does not exist in the current working directory and `summarize_prompts/.skip-setup` does not exist, ask the user:
@@ -70,7 +77,10 @@ This saves `<video_id>.txt` in the current directory.
 
 Read the saved `.txt` file. Build the final prompt by combining:
 1. `<base_dir>/summarize_prompts/pre-summary.md` — always loaded from the plugin, never replaced by the user
-2. The customizable prompt: `summarize_prompts/summarize.md` from the current working directory if present, otherwise `<base_dir>/summarize_prompts/summarize.md`
+2. The customizable prompt, resolved in this order:
+   - The **override prompt** from step 1 (if the user specified a file by name)
+   - `summarize_prompts/summarize.md` in the current working directory (if present)
+   - `<base_dir>/summarize_prompts/summarize.md` (default fallback)
 
 In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}` with the full transcript content, then apply it to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
 
