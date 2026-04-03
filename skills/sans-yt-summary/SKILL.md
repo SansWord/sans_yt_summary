@@ -73,9 +73,10 @@ In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}
 
 Write the summary to a `.md` file in the current directory. Use the video title (from the `.txt` file header) as the filename: sanitize it by replacing spaces with `_` and removing special characters, then append `_summary.md`. For example, a title of "My Video Title" becomes `My_Video_Title_summary.md`.
 
-If the file already exists, overwrite it.
+If the file does not exist, create it.
+If the file already exists, do not overwrite it — create a new file with a timestamp suffix instead: `My_Video_Title_summary_YYYYMMDD_HHMMSS.md` using the current date and time.
 
-Do not print the summary in the conversation. Tell the user the filename it was saved to, and whether it was created or updated.
+Do not print the summary in the conversation. Tell the user the filename it was saved to.
 
 If the default prompt was used (no local `summarize_prompts/summarize.md`), add this hint:
 
