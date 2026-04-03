@@ -68,6 +68,12 @@ Summarize abc123.txt
 ```
 I want to customize the YouTube summary prompt
 ```
+```
+Use tweet.md to summarize https://www.youtube.com/watch?v=VIDEO_ID
+```
+```
+Use examples/just-do-it/prompts/key-quotes.md to summarize https://www.youtube.com/watch?v=VIDEO_ID
+```
 
 ### Cookies
 
