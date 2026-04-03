@@ -64,7 +64,11 @@ This saves `<video_id>.txt` in the current directory.
 
 **6. Summarize**
 
-Read the saved `.txt` file. Load `summarize_prompts/summarize.md` from the current working directory (resolved in step 2). Replace `{{url}}` with the video URL and `{{transcript}}` with the full transcript content, then apply the resulting prompt to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
+Read the saved `.txt` file. Build the final prompt by combining:
+1. `<base_dir>/summarize_prompts/pre-summary.md` — always loaded from the plugin, never replaced by the user
+2. The customizable prompt: `summarize_prompts/summarize.md` from the current working directory if present, otherwise `<base_dir>/summarize_prompts/summarize.md`
+
+In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}` with the full transcript content, then apply it to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
 
 **7. Save the summary**
 
@@ -85,4 +89,4 @@ If the user asks to customize the summary prompt (e.g. "I want to customize the 
 1. Copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` in the current directory (create the directory if needed).
 2. Copy `<base_dir>/summarize_prompts/summarize_template.md` to `summarize_prompts/summarize_template.md` in the current directory.
 3. If `summarize_prompts/.skip-setup` exists, delete it.
-4. Show the user the contents of `summarize_prompts/summarize.md` and say: "Edit `summarize_prompts/summarize.md` to change how summaries are generated. `summarize_template.md` is included as a reference. Let me know when you're done and I'll use your prompt on the next summary."
+4. Show the user the contents of `summarize_prompts/summarize.md` and say: "Edit `summarize_prompts/summarize.md` to change how summaries are generated. `summarize_template.md` is included as a reference. Note: `pre-summary.md` (from the plugin) is always applied on top — it ensures the title/URL header and timestamp links are always present. Let me know when you're done and I'll use your prompt on the next summary."
