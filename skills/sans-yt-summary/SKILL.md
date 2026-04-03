@@ -120,3 +120,20 @@ If `summarize_prompts/.skip-setup` exists, delete it.
 
 **Step D — Inform the user:**
 Show the contents of `summarize_prompts/summarize.md` and say: "Edit `summarize_prompts/summarize.md` to change how summaries are generated. `summarize_template.md` is included as a reference. Note: `pre-summary.md` (from the plugin) is always applied on top — it ensures the title/URL header and timestamp links are always present. Let me know when you're done and I'll use your prompt on the next summary."
+
+If the user asks how to write a custom prompt or what placeholders are available, show them this minimal template:
+
+```
+Your instructions to Claude here.
+
+URL: {{url}}
+
+## Transcript
+
+{{transcript}}
+```
+
+Explain:
+- `{{url}}` — replaced with the YouTube video URL
+- `{{transcript}}` — replaced with the full timed transcript (required)
+- The summary language follows the language of the prompt
