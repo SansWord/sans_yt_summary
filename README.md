@@ -2,6 +2,14 @@
 
 A Claude Code plugin that fetches a YouTube transcript and summarizes it — directly inside your Claude Code session, no API key required.
 
+## Why use this?
+
+- **No API key needed** — Claude summarizes directly inside your session
+- **Transcript-based** — works with auto-generated captions, no audio processing
+- **Clickable timestamps** — every key point links back to the exact moment in the video
+- **Customizable** — bring your own prompt to change the language, format, or focus
+- **Works with any YouTube URL** — standard, live, shorts, and youtu.be links
+
 ## How it works
 
 1. You give Claude a YouTube URL and ask it to summarize
