@@ -22,7 +22,7 @@ If `summarize_prompts/summarize.md` does not exist in the current working direct
 
 > "No custom summary prompt found. Would you like to copy the default prompt to `summarize_prompts/summarize.md` so you can customize it?"
 
-- If **yes**: copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` (create the directory if needed). Then show the user the contents of the file and say: "Review and edit `summarize_prompts/summarize.md` as needed, then let me know when you're ready to continue." Stop and wait for the user to confirm before proceeding.
+- If **yes**: copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` (create the directory if needed). Then show the user the contents of the file and say: "Review and edit `summarize_prompts/summarize.md` as needed, then let me know when you're ready to continue." Stop and wait for the user to confirm. Once confirmed, resume from step 3.
 - If **no**: create `summarize_prompts/.skip-setup` (create the directory if needed) so this question is not asked again in this project. Use `<base_dir>/summarize_prompts/summarize.md` directly as the prompt for this run.
 
 If `summarize_prompts/summarize.md` already exists, or `summarize_prompts/.skip-setup` exists, skip this step and use whichever prompt is available (`summarize_prompts/summarize.md` in the current directory if present, otherwise `<base_dir>/summarize_prompts/summarize.md`).
@@ -64,7 +64,7 @@ This saves `<video_id>.txt` in the current directory.
 
 **6. Summarize**
 
-Read the saved `.txt` file. Load `summarize_prompts/summarize.md` from the current working directory (resolved in step 2) and apply it to the transcript content to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
+Read the saved `.txt` file. Load `summarize_prompts/summarize.md` from the current working directory (resolved in step 2). Replace `{{url}}` with the video URL and `{{transcript}}` with the full transcript content, then apply the resulting prompt to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
 
 **7. Save the summary**
 
