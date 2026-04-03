@@ -1,7 +1,6 @@
 ---
 name: sans-yt-summary
 description: Use this skill when the user wants to summarize a YouTube video, fetch a YouTube transcript, shares a YouTube URL and asks for a summary or overview, or wants to customize the summary prompt.
-version: 1.1.0
 ---
 
 # Summarize YouTube Video
