@@ -18,14 +18,14 @@ Extract the YouTube URL from the user's message. If no URL is given, ask the use
 
 **2. Check for custom prompt**
 
-If `summarize_prompts/summarize.md` does not exist in the current working directory, ask the user:
+If `summarize_prompts/summarize.md` does not exist in the current working directory and `summarize_prompts/.skip-setup` does not exist, ask the user:
 
 > "No custom summary prompt found. Would you like to copy the default prompt to `summarize_prompts/summarize.md` so you can customize it?"
 
 - If **yes**: copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` (create the directory if needed). Then show the user the contents of the file and say: "Review and edit `summarize_prompts/summarize.md` as needed, then let me know when you're ready to continue." Stop and wait for the user to confirm before proceeding.
-- If **no**: use `<base_dir>/summarize_prompts/summarize.md` directly as the prompt for this run.
+- If **no**: create `summarize_prompts/.skip-setup` (create the directory if needed) so this question is not asked again in this project. Use `<base_dir>/summarize_prompts/summarize.md` directly as the prompt for this run.
 
-If `summarize_prompts/summarize.md` already exists in the current directory, use it without asking.
+If `summarize_prompts/summarize.md` already exists, or `summarize_prompts/.skip-setup` exists, skip this step and use whichever prompt is available (`summarize_prompts/summarize.md` in the current directory if present, otherwise `<base_dir>/summarize_prompts/summarize.md`).
 
 **3. Check for cookies**
 
