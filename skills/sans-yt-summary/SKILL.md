@@ -75,7 +75,7 @@ If the default prompt was used (no local `summarize_prompts/summarize.md`), add 
 
 ## Customizing the summary prompt
 
-If the user asks to customize the summary prompt (e.g. "I want to customize the summary prompt", "change the prompt", "edit the summarize prompt"):
+If the user asks to customize the summary prompt (e.g. "I want to customize the summary prompt", "customize the YouTube summary prompt", "edit the YouTube summary prompt"):
 
 1. Copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` in the current directory (create the directory if needed).
 2. Copy `<base_dir>/summarize_prompts/summarize_template.md` to `summarize_prompts/summarize_template.md` in the current directory.
