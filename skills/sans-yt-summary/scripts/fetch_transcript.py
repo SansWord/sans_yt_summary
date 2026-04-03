@@ -1,5 +1,6 @@
 import glob
 import re
+import secrets
 import sys
 import json
 import argparse
@@ -157,11 +158,16 @@ def format_segments(segments: list) -> str:
 
 
 def save_transcript(video_id: str, url: str, segments: list, title: str) -> str:
+    sentinel = secrets.token_hex(4)  # e.g. 'a3f9c72b'
+    closing_tag = f"</transcript_{sentinel}>"
     formatted = format_segments(segments)
+    escaped = formatted.replace(closing_tag, closing_tag.replace("<", "&lt;"))
     output_path = f"{video_id}.txt"
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"---\ntitle: {title}\nurl: {url}\n---\n\n")
-        f.write(formatted)
+        f.write(f"---\ntitle: {title}\nurl: {url}\nsentinel: {sentinel}\n---\n\n")
+        f.write(f"<transcript_{sentinel}>\n")
+        f.write(escaped)
+        f.write(f"</transcript_{sentinel}>\n")
     return output_path
 
 

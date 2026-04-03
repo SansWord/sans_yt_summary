@@ -100,19 +100,17 @@ Read the saved `.txt` file. Build the final prompt by combining:
    - `summarize_prompts/summarize.md` in the current working directory (if present)
    - `<base_dir>/summarize_prompts/summarize.md` (default fallback)
 
-In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}` with the transcript content using the following steps:
+In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}` with the already-wrapped transcript block from the `.txt` file.
 
-1. Generate a random 8-character hex sentinel, e.g. `a3f9c72b` (re-generate each run)
-2. In the transcript text, replace every occurrence of `</transcript_a3f9c72b>` with `&lt;/transcript_a3f9c72b&gt;` (escape the closing tag so it cannot appear in the content)
-3. Wrap the escaped content with the sentinel tag:
+The `.txt` file written by `fetch_transcript.py` contains the transcript wrapped in a random sentinel tag:
 
 ```
-<transcript_a3f9c72b>
-{escaped transcript content}
-</transcript_a3f9c72b>
+<transcript_XXXXXXXX>
+[0:00] transcript content...
+</transcript_XXXXXXXX>
 ```
 
-Both defenses layer: escaping prevents tag injection from inside the content; the random sentinel makes the boundary tag itself unguessable. Prompt files should use `{{transcript}}` without any tags — the skill always applies these protections.
+where `XXXXXXXX` is stored in the file header as `sentinel: XXXXXXXX`. When substituting `{{transcript}}`, extract and use the entire wrapped block as-is — do not re-wrap or modify it. The sentinel generation, closing-tag escaping, and wrapping are all handled by the script.
 
 Then apply the combined prompt to produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
 
