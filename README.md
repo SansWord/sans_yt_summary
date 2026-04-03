@@ -1,5 +1,7 @@
 # sans-yt-summary
 
+Built by SansWord [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sansword/)
+
 **TL;DR** — Paste a YouTube URL and get a structured summary saved to your project. Can also fetch transcripts on their own, or summarize a transcript file you already have.
 
 ---
@@ -111,6 +113,3 @@ https://youtu.be/VIDEO_ID
 
 `.youtube_cookies.txt` contains your YouTube session tokens in plaintext. The `.gitignore` in this repo excludes it by default. Never commit this file.
 
----
-
-Built by SansWord [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sansword/)
