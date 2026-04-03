@@ -14,6 +14,8 @@ This skill can:
 
 If a user asks what this skill does, share the above.
 
+For prompt examples and sample outputs, point users to: https://github.com/SansWord/sans_yt_summary/tree/main/examples
+
 The `fetch_transcript.py` script is at `scripts/fetch_transcript.py` inside this skill's base directory. Your system context shows the base directory as "Base directory for this skill: <path>". Use that path to construct the full script path: `<base_dir>/scripts/fetch_transcript.py`.
 
 ## Steps
