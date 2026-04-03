@@ -86,7 +86,12 @@ If the default prompt was used (no local `summarize_prompts/summarize.md`), add 
 
 If the user asks to customize the summary prompt (e.g. "I want to customize the summary prompt", "customize the YouTube summary prompt", "edit the YouTube summary prompt"):
 
-1. Copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` in the current directory (create the directory if needed).
-2. Copy `<base_dir>/summarize_prompts/summarize_template.md` to `summarize_prompts/summarize_template.md` in the current directory.
+You MUST copy ALL of the following files — do not skip any:
+
+1. Copy `<base_dir>/summarize_prompts/summarize.md` → `summarize_prompts/summarize.md` in the current directory (create the directory if needed).
+2. Copy `<base_dir>/summarize_prompts/summarize_template.md` → `summarize_prompts/summarize_template.md` in the current directory.
+
+Then:
+
 3. If `summarize_prompts/.skip-setup` exists, delete it.
 4. Show the user the contents of `summarize_prompts/summarize.md` and say: "Edit `summarize_prompts/summarize.md` to change how summaries are generated. `summarize_template.md` is included as a reference. Note: `pre-summary.md` (from the plugin) is always applied on top — it ensures the title/URL header and timestamp links are always present. Let me know when you're done and I'll use your prompt on the next summary."
