@@ -21,10 +21,18 @@ See [outputs/](./outputs/) for what each prompt produces on this video.
 
 ## How to try it
 
-1. Copy a prompt to your project:
-   ```bash
-   mkdir -p summarize_prompts
-   cp examples/just-do-it/prompts/key-quotes.md summarize_prompts/summarize.md
-   ```
-2. Ask Claude to summarize the video:
-   > "Summarize this video: https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+**Option A — Reference the prompt file directly (no copying needed):**
+> "Use examples/just-do-it/prompts/key-quotes.md to summarize https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+
+**Option B — Copy to your project and reference by filename:**
+```bash
+cp examples/just-do-it/prompts/tweet.md summarize_prompts/tweet.md
+```
+> "Use tweet.md to summarize https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+
+**Option C — Set as your default prompt:**
+```bash
+mkdir -p summarize_prompts
+cp examples/just-do-it/prompts/key-quotes.md summarize_prompts/summarize.md
+```
+> "Summarize this video: https://www.youtube.com/watch?v=ZXsQAXx_ao0"
