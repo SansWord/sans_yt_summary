@@ -1,4 +1,5 @@
 import glob
+import platform
 import re
 import secrets
 import sys
@@ -123,10 +124,14 @@ def _is_cookie_error(text: str) -> bool:
 
 
 def _refresh_cookies() -> str:
-    print(
-        "\nYouTube cookies have expired. Re-fetching from Chrome — "
-        "you will see a macOS system password prompt."
-    )
+    system = platform.system()
+    if system == "Windows":
+        prompt_note = "Chrome cookies will be decrypted automatically (no prompt required)."
+    elif system == "Linux":
+        prompt_note = "you may see a keychain prompt depending on your setup."
+    else:
+        prompt_note = "you will see a macOS system password prompt."
+    print(f"\nYouTube cookies have expired. Re-fetching from Chrome — {prompt_note}")
     if os.path.exists(PERSISTENT_COOKIES_PATH):
         os.remove(PERSISTENT_COOKIES_PATH)
     export_cookies(PERSISTENT_COOKIES_PATH)
