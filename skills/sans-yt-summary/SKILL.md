@@ -6,7 +6,13 @@ version: 1.0.0
 
 # Summarize YouTube Video
 
-Fetch a YouTube transcript and summarize it using Claude.
+This skill can:
+- **Summarize a YouTube video** from a URL — fetches the transcript and produces a structured summary with clickable timestamp links, saved as a `.md` file
+- **Fetch a transcript only** — saves the raw transcript without summarizing
+- **Summarize an existing transcript file** — skip fetching, go straight to summary
+- **Use a custom prompt** — specify any `.md` file by name to change the summary style, language, or format
+
+If a user asks what this skill does, share the above.
 
 The `fetch_transcript.py` script is at `scripts/fetch_transcript.py` inside this skill's base directory. Your system context shows the base directory as "Base directory for this skill: <path>". Use that path to construct the full script path: `<base_dir>/scripts/fetch_transcript.py`.
 
