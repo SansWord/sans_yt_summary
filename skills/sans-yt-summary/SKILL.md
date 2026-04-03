@@ -95,10 +95,14 @@ In the combined prompt, replace `{{url}}` with the video URL and `{{transcript}}
 
 **7. Save the summary**
 
-Write the summary to a `.md` file in the current directory. Use the video title (from the `.txt` file header) as the filename: sanitize it by replacing spaces with `_` and removing special characters, then append `_summary.md`. For example, a title of "My Video Title" becomes `My_Video_Title_summary.md`.
+Build the output filename as: `<short_title>_<prompt_name>_summary.md`
+
+- **`<short_title>`** — take the video title from the `.txt` file header, keep only the first 3-4 meaningful words, replace spaces with `-`, remove special characters, lowercase. Example: "Shia LaBeouf Just Do It Motivational Speech" → `shia-labeouf-just-do-it`
+- **`<prompt_name>`** — the stem of the prompt file used (without `.md`). Examples: `summarize`, `tweet`, `key-quotes`, `summarize_system_design_en`
+- Full example: `shia-labeouf-just-do-it_tweet_summary.md`
 
 If the file does not exist, create it.
-If the file already exists, do not overwrite it — create a new file with a timestamp suffix instead: `My_Video_Title_summary_YYYYMMDD_HHMMSS.md` using the current date and time.
+If the file already exists, do not overwrite it — append a timestamp suffix instead: `shia-labeouf-just-do-it_tweet_summary_YYYYMMDD_HHMMSS.md`
 
 Do not print the summary in the conversation. Tell the user the filename it was saved to.
 
