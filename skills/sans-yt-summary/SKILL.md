@@ -24,7 +24,8 @@ Also determine the user's intent:
 Also check if the user specifies a prompt file by name (e.g. "use tweet.md to summarize …", "summarize with key-quotes.md"). If a filename is given, resolve it in this order:
 1. As a literal path (if the user gave a full or relative path)
 2. `summarize_prompts/<filename>` in the current directory
-3. `<base_dir>/summarize_prompts/<filename>`
+3. `<filename>` at the project root (current directory)
+4. `<base_dir>/summarize_prompts/<filename>`
 
 If found, store it as the **override prompt** and skip step 2 entirely. If not found, warn the user: "Could not find `<filename>`. Using the default prompt instead." and proceed normally.
 
