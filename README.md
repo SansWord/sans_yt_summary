@@ -23,7 +23,7 @@ brew install yt-dlp
 ## Install
 
 ```bash
-claude plugins marketplace add github:SansWord/sans_yt_summary
+claude plugins marketplace add SansWord/sans_yt_summary
 claude plugins install sans-yt-summary@sans_yt_summary
 ```
 
