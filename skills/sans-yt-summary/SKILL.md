@@ -49,8 +49,8 @@ This saves `<video_id>.txt` in the current directory.
 **5. Summarize**
 
 Read the saved `.txt` file. Then load the summarization prompt:
-- If `summarize_prompts/summarize.md` exists in the current working directory, use that.
-- Otherwise fall back to `<base_dir>/summarize_prompts/summarize.md`.
+- If `summarize_prompts/summarize.md` does not exist in the current working directory, copy `<base_dir>/summarize_prompts/summarize.md` to `summarize_prompts/summarize.md` (create the directory if needed) and inform the user: "Copied default prompt to `summarize_prompts/summarize.md` — edit it to customize future summaries."
+- Use `summarize_prompts/summarize.md` in the current working directory.
 
 Apply the prompt to the transcript content and produce the summary. Do not call the Anthropic API or run any summarize script — Claude produces the summary directly.
 
