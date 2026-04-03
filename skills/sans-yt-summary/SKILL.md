@@ -48,10 +48,9 @@ python3 <base_dir>/scripts/fetch_transcript.py --list-langs [--cookies FILE] "UR
 
 The output may start with a `detected:<lang>` line (the video's original language), followed by the available language codes.
 
-- If a `detected:<lang>` line is present, pre-select that language and ask:
-  > "This video's main language is `<lang>`. Press Enter to use it, or type a code from the list to pick a different one: [list]"
-  If the user confirms or presses Enter, use the detected language.
-- If no `detected:` line is present, show the full list and ask the user to pick one.
+- If only one language is available, use it automatically and inform the user.
+- If a `detected:<lang>` line is present, use that language automatically and inform the user: "Using `<lang>` (detected). To use a different language, re-run and tell me which one."
+- If no `detected:` line is present and multiple languages are available, show the list and ask the user to pick one by replying with the language code.
 
 **5. Fetch the transcript**
 
