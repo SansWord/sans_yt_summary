@@ -46,7 +46,12 @@ Run:
 python3 <base_dir>/scripts/fetch_transcript.py --list-langs [--cookies FILE] "URL"
 ```
 
-Show the language list to the user and ask which one to use. Default recommendation: pick `en` or `en-*` if available.
+The output may start with a `detected:<lang>` line (the video's original language), followed by the available language codes.
+
+- If a `detected:<lang>` line is present, pre-select that language and ask:
+  > "This video's main language is `<lang>`. Press Enter to use it, or type a code from the list to pick a different one: [list]"
+  If the user confirms or presses Enter, use the detected language.
+- If no `detected:` line is present, show the full list and ask the user to pick one.
 
 **5. Fetch the transcript**
 

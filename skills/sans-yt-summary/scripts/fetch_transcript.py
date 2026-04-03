@@ -77,8 +77,8 @@ def _fetch_subtitles(video_id: str, lang: str, cookies_path: Optional[str], tmpd
     return title, subtitle_file
 
 
-def _list_available_languages(video_id: str, cookies_path: Optional[str] = None, from_browser: bool = False) -> list:
-    """Return sorted list of available subtitle/caption language codes via yt-dlp --dump-json."""
+def _list_available_languages(video_id: str, cookies_path: Optional[str] = None, from_browser: bool = False) -> tuple:
+    """Return (sorted list of available language codes, detected original language or None)."""
     cmd = [
         "yt-dlp",
         "--dump-json",
@@ -91,16 +91,16 @@ def _list_available_languages(video_id: str, cookies_path: Optional[str] = None,
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "Failed to fetch video info")
     if not result.stdout.strip():
-        return []
+        return [], None
     try:
         info = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return []
+        return [], None
     langs = set(info.get("subtitles", {}).keys())
     original_lang = info.get("language")
     if original_lang and original_lang in info.get("automatic_captions", {}):
         langs.add(original_lang)
-    return sorted(langs)
+    return sorted(langs), original_lang
 
 
 PERSISTENT_COOKIES_PATH = ".youtube_cookies.txt"
@@ -116,7 +116,7 @@ def fetch_transcript(video_id: str, cookies_path: Optional[str] = None, lang: Op
         from_browser = False
 
     if lang is None:
-        langs = _list_available_languages(video_id, cookies_path, from_browser)
+        langs, _ = _list_available_languages(video_id, cookies_path, from_browser)
         if not langs:
             raise RuntimeError(f"No transcripts found for video: {video_id}")
 
@@ -253,13 +253,15 @@ def main() -> None:
 
     if args.list_langs:
         try:
-            langs = _list_available_languages(video_id, cookies_path, from_browser)
+            langs, detected = _list_available_languages(video_id, cookies_path, from_browser)
         except RuntimeError as e:
             print(str(e))
             sys.exit(1)
         if not langs:
             print("No transcripts found.")
             sys.exit(1)
+        if detected:
+            print(f"detected:{detected}")
         for lang in langs:
             print(lang)
         return
