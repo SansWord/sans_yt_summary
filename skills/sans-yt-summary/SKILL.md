@@ -17,7 +17,8 @@ The `fetch_transcript.py` script is at `scripts/fetch_transcript.py` inside this
 Extract the YouTube URL from the user's message. If no URL is given, ask the user for one.
 
 Also determine the user's intent:
-- **Transcript only** — if the user says "fetch transcript", "get transcript", "just the transcript", or similar. In this mode, run steps 3–5 only, then tell the user the transcript file was saved and stop. Skip steps 2, 6, and 7.
+- **Transcript only** — if the user says "fetch transcript", "get transcript", "just the transcript", or similar. Run steps 3–5 only, tell the user the transcript file was saved, and stop. Skip steps 2, 6, and 7.
+- **Summarize existing transcript** — if the user provides a `.txt` file path (e.g. "summarize abc123.txt" or "use the existing transcript abc123.txt"). Skip steps 2–5, read the provided file directly, and proceed from step 6. Extract the URL from the file's `url:` header line for use in the prompt and timestamp links.
 - **Full summary** (default) — proceed through all steps.
 
 **2. Check for custom prompt**
