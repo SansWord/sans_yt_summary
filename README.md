@@ -1,5 +1,9 @@
 # sans-yt-summary
 
+**TL;DR** — Paste a YouTube URL and get a structured summary saved to your project. Can also fetch transcripts on their own, or summarize a transcript file you already have.
+
+---
+
 Ever watched a long YouTube video just to find out it wasn't worth your time? **sans-yt-summary** is a [Claude Code](https://claude.ai/code) plugin that summarizes any YouTube video for you — just paste the URL and ask. No extra tools, no API key, no copy-pasting transcripts.
 
 The summary includes a structured overview, key points with **clickable timestamp links** that jump directly to the moment in the video, and notable takeaways. Everything is saved as a Markdown file you can keep, search, or share.
