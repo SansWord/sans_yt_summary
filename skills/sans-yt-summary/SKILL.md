@@ -124,9 +124,10 @@ Show the contents of `summarize_prompts/summarize.md` and say: "Edit `summarize_
 If the user asks how to write a custom prompt or what placeholders are available, show them this minimal template:
 
 ```
-Your instructions to Claude here.
-
 URL: {{url}}
+
+1. Write a 2-3 sentence overview of the video.
+2. List the key points with timestamp links.
 
 ## Transcript
 
