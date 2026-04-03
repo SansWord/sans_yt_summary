@@ -1,6 +1,8 @@
 # sans-yt-summary
 
-A Claude Code plugin that fetches a YouTube transcript and summarizes it — directly inside your Claude Code session, no API key required.
+Ever watched a long YouTube video just to find out it wasn't worth your time? **sans-yt-summary** is a [Claude Code](https://claude.ai/code) plugin that summarizes any YouTube video for you — just paste the URL and ask. No extra tools, no API key, no copy-pasting transcripts.
+
+The summary includes a structured overview, key points with **clickable timestamp links** that jump directly to the moment in the video, and notable takeaways. Everything is saved as a Markdown file you can keep, search, or share.
 
 ## Why use this?
 
@@ -45,6 +47,21 @@ Claude will:
 1. List the available transcript languages and ask which to use
 2. Fetch the transcript (exporting Chrome cookies on first run — you'll see a macOS Keychain prompt)
 3. Save a `<Video_Title>_summary.md` to your current directory
+
+### Example prompts
+
+```
+Summarize this video: https://www.youtube.com/watch?v=VIDEO_ID
+```
+```
+Just fetch the transcript: https://www.youtube.com/watch?v=VIDEO_ID
+```
+```
+Summarize abc123.txt
+```
+```
+I want to customize the YouTube summary prompt
+```
 
 ### Cookies
 
