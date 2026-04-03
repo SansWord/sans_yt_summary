@@ -65,8 +65,7 @@ The summary language follows your prompt language — write the prompt in French
 ## Running tests
 
 ```bash
-cd skills/sans-yt-summary/scripts
-pip install -r ../../../requirements.txt
+pip install -r requirements.txt
 pytest tests/
 ```
 
