@@ -1,7 +1,7 @@
 {
   "name": "sans-yt-summary",
   "description": "Fetch and summarize YouTube videos using Claude",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "author": {
     "name": "sansword"
   },
