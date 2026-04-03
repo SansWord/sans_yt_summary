@@ -8,12 +8,12 @@ This example uses the same short video to show how different `summarize.md` prom
 
 ## Prompts
 
-| File | Style | Best for |
-|------|-------|----------|
-| [standard.md](./prompts/standard.md) | Default structured summary | General use |
-| [key-quotes.md](./prompts/key-quotes.md) | Extract notable quotes with timestamps | Speeches, interviews |
-| [action-items.md](./prompts/action-items.md) | Distill into actionable takeaways only | Productivity, learning |
-| [tweet.md](./prompts/tweet.md) | Compress into a tweet thread | Sharing, social media |
+| Prompt | Style | Best for | Output |
+|--------|-------|----------|--------|
+| [standard.md](./prompts/standard.md) | Default structured summary | General use | [view](./outputs/standard.md) |
+| [key-quotes.md](./prompts/key-quotes.md) | Extract notable quotes with timestamps | Speeches, interviews | [view](./outputs/key-quotes.md) |
+| [action-items.md](./prompts/action-items.md) | Distill into actionable takeaways only | Productivity, learning | [view](./outputs/action-items.md) |
+| [tweet.md](./prompts/tweet.md) | Compress into a tweet thread | Sharing, social media | [view](./outputs/tweet.md) |
 
 ## Outputs
 
