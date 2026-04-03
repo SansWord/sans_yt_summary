@@ -15,10 +15,6 @@ This example uses the same short video to show how different `summarize.md` prom
 | [action-items.md](./prompts/action-items.md) | Distill into actionable takeaways only | Productivity, learning | [view](./outputs/action-items.md) |
 | [tweet.md](./prompts/tweet.md) | Compress into a tweet thread | Sharing, social media | [view](./outputs/tweet.md) |
 
-## Outputs
-
-See [outputs/](./outputs/) for what each prompt produces on this video.
-
 ## How to try it
 
 **Option A — Reference the prompt file directly (no copying needed):**
